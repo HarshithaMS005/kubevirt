@@ -94,8 +94,8 @@ var _ = SIGDescribe("[rfe_id:694][crit:medium][vendor:cnv-qe@redhat.com][level:c
 		})
 		Context("with a test outbound VMI", func() {
 			BeforeEach(func() {
-				inboundVMI = libvmifact.NewCirros()
-				outboundVMI = libvmifact.NewCirros()
+				inboundVMI = libvmifact.NewAlpine()
+				outboundVMI = libvmifact.NewAlpine()
 				inboundVMIWithPodNetworkSet = vmiWithPodNetworkSet()
 				inboundVMIWithCustomMacAddress = vmiWithCustomMacAddress("de:ad:00:00:be:af")
 
@@ -140,7 +140,7 @@ var _ = SIGDescribe("[rfe_id:694][crit:medium][vendor:cnv-qe@redhat.com][level:c
 				expectedMtuString := fmt.Sprintf("mtu %d", mtu)
 
 				By("checking eth0 MTU inside the VirtualMachineInstance")
-				Expect(console.LoginToCirros(outboundVMI)).To(Succeed())
+				Expect(console.LoginToAlpine(outboundVMI)).To(Succeed())
 
 				addrShow := "ip address show eth0\n"
 				Expect(console.SafeExpectBatch(outboundVMI, []expect.Batcher{
@@ -157,7 +157,7 @@ var _ = SIGDescribe("[rfe_id:694][crit:medium][vendor:cnv-qe@redhat.com][level:c
 				// we transferred its IP address under DHCP server control, so the
 				// only thing we can validate is connectivity between VMIs
 				//
-				// NOTE: cirros ping doesn't support -M do that could be used to
+				// NOTE: Alpine ping doesn't support -M do that could be used to
 				// validate end-to-end connectivity with Don't Fragment flag set
 				cmdCheck := fmt.Sprintf("ping %s -c 1 -w 5 -s %d\n", addr, payloadSize)
 				err = console.SafeExpectBatch(outboundVMI, []expect.Batcher{
@@ -192,6 +192,7 @@ var _ = SIGDescribe("[rfe_id:694][crit:medium][vendor:cnv-qe@redhat.com][level:c
 
 			ip := inboundVMI.Status.Interfaces[0].IP
 
+<<<<<<< HEAD
 			By("start connectivity job on the same node as the VM")
 			localNodeTCPJob := job.NewHelloWorldJobTCP(ip, strconv.Itoa(testPort))
 			localNodeTCPJob.Spec.Template.Spec.Affinity = &k8sv1.Affinity{NodeAffinity: newNodeAffinity(k8sv1.NodeSelectorOpIn, inboundVMI.Status.NodeName)}
@@ -218,13 +219,13 @@ var _ = SIGDescribe("[rfe_id:694][crit:medium][vendor:cnv-qe@redhat.com][level:c
 				libnet.SkipWhenClusterNotSupportIpv4()
 
 				var err error
-				inboundVMI, err = virtClient.VirtualMachineInstance(testsuite.GetTestNamespace(nil)).Create(context.Background(), libvmifact.NewCirros(), metav1.CreateOptions{})
+				inboundVMI, err = virtClient.VirtualMachineInstance(testsuite.GetTestNamespace(nil)).Create(context.Background(), libvmifact.NewAlpine(), metav1.CreateOptions{})
 				Expect(err).ToNot(HaveOccurred())
-				outboundVMI, err = virtClient.VirtualMachineInstance(testsuite.GetTestNamespace(nil)).Create(context.Background(), libvmifact.NewCirros(), metav1.CreateOptions{})
+				outboundVMI, err = virtClient.VirtualMachineInstance(testsuite.GetTestNamespace(nil)).Create(context.Background(), libvmifact.NewAlpine(), metav1.CreateOptions{})
 				Expect(err).ToNot(HaveOccurred())
 
-				inboundVMI = libwait.WaitUntilVMIReady(inboundVMI, console.LoginToCirros)
-				outboundVMI = libwait.WaitUntilVMIReady(outboundVMI, console.LoginToCirros)
+				inboundVMI = libwait.WaitUntilVMIReady(inboundVMI, console.LoginToAlpine)
+				outboundVMI = libwait.WaitUntilVMIReady(outboundVMI, console.LoginToAlpine)
 			})
 
 			// Unless an explicit interface model is specified, the default interface model is virtio.
@@ -246,7 +247,7 @@ var _ = SIGDescribe("[rfe_id:694][crit:medium][vendor:cnv-qe@redhat.com][level:c
 		It("[test_id:1770]should expose the right device type to the guest", func() {
 			By("checking the device vendor in /sys/class")
 			// Create a machine with e1000 interface model
-			// Use alpine because cirros dhcp client starts prematurely before link is ready
+			// Use alpine because Alpine dhcp client starts prematurely before link is ready
 			masqIface := libvmi.InterfaceDeviceWithMasqueradeBinding()
 			masqIface.Model = "e1000"
 			e1000VMI := libvmifact.NewAlpine(
@@ -381,7 +382,7 @@ var _ = SIGDescribe("[rfe_id:694][crit:medium][vendor:cnv-qe@redhat.com][level:c
 	Context("VirtualMachineInstance with custom dns", func() {
 		It("[test_id:1779]should have custom resolv.conf", func() {
 			libnet.SkipWhenClusterNotSupportIpv4()
-			dnsVMI := libvmifact.NewCirros()
+			dnsVMI := libvmifact.NewAlpine()
 
 			dnsVMI.Spec.DNSPolicy = "None"
 
@@ -395,7 +396,7 @@ var _ = SIGDescribe("[rfe_id:694][crit:medium][vendor:cnv-qe@redhat.com][level:c
 			}
 			dnsVMI, err := virtClient.VirtualMachineInstance(testsuite.GetTestNamespace(dnsVMI)).Create(context.Background(), dnsVMI, metav1.CreateOptions{})
 			Expect(err).ToNot(HaveOccurred())
-			dnsVMI = libwait.WaitUntilVMIReady(dnsVMI, console.LoginToCirros)
+			dnsVMI = libwait.WaitUntilVMIReady(dnsVMI, console.LoginToAlpine)
 			const catResolvConf = "cat /etc/resolv.conf\n"
 			err = console.SafeExpectBatch(dnsVMI, []expect.Batcher{
 				&expect.BSnd{S: "\n"},
@@ -429,7 +430,7 @@ var _ = SIGDescribe("[rfe_id:694][crit:medium][vendor:cnv-qe@redhat.com][level:c
 			if ipv4NetworkCIDR != "" {
 				net.NetworkSource.Pod.VMNetworkCIDR = ipv4NetworkCIDR
 			}
-			return libvmifact.NewCirros(
+			return libvmifact.NewAlpine(
 				libvmi.WithInterface(libvmi.InterfaceDeviceWithMasqueradeBinding(ports...)),
 				libvmi.WithNetwork(net),
 			)
@@ -504,18 +505,18 @@ var _ = SIGDescribe("[rfe_id:694][crit:medium][vendor:cnv-qe@redhat.com][level:c
 					context.Background(), masqueradeVMI([]v1.Port{}, networkCIDR), metav1.CreateOptions{},
 				)
 				Expect(err).ToNot(HaveOccurred())
-				clientVMI = libwait.WaitUntilVMIReady(clientVMI, console.LoginToCirros)
+				clientVMI = libwait.WaitUntilVMIReady(clientVMI, console.LoginToAlpine)
 
 				serverVMI := masqueradeVMI(ports, networkCIDR)
 				serverVMI.Labels = map[string]string{"expose": "server"}
 				serverVMI, err = virtClient.VirtualMachineInstance(testsuite.GetTestNamespace(nil)).Create(context.Background(), serverVMI, metav1.CreateOptions{})
 				Expect(err).ToNot(HaveOccurred())
-				serverVMI = libwait.WaitUntilVMIReady(serverVMI, console.LoginToCirros)
+				serverVMI = libwait.WaitUntilVMIReady(serverVMI, console.LoginToAlpine)
 				Expect(serverVMI.Status.Interfaces).To(HaveLen(1))
 				Expect(serverVMI.Status.Interfaces[0].IPs).NotTo(BeEmpty())
 
 				By("starting a tcp server")
-				vmnetserver.StartTCPServer(serverVMI, tcpPort, console.LoginToCirros)
+				vmnetserver.StartTCPServer(serverVMI, tcpPort, console.LoginToAlpine)
 
 				if networkCIDR == "" {
 					networkCIDR = api.DefaultVMCIDR
@@ -548,7 +549,7 @@ var _ = SIGDescribe("[rfe_id:694][crit:medium][vendor:cnv-qe@redhat.com][level:c
 					context.Background(), masqueradeVMI([]v1.Port{}, ""), metav1.CreateOptions{},
 				)
 				Expect(err).ToNot(HaveOccurred())
-				vmi = libwait.WaitUntilVMIReady(vmi, console.LoginToCirros)
+				vmi = libwait.WaitUntilVMIReady(vmi, console.LoginToAlpine)
 
 				By("Checking ping (IPv4)")
 				Expect(libnet.PingFromVMConsole(vmi, ipv4Address, "-c 5", "-w 15")).To(Succeed())
@@ -637,7 +638,7 @@ var _ = SIGDescribe("[rfe_id:694][crit:medium][vendor:cnv-qe@redhat.com][level:c
 
 				vmi, err = virtClient.VirtualMachineInstance(testsuite.GetTestNamespace(nil)).Create(context.Background(), vmi, metav1.CreateOptions{})
 				Expect(err).ToNot(HaveOccurred())
-				vmi = libwait.WaitUntilVMIReady(vmi, console.LoginToCirros)
+				vmi = libwait.WaitUntilVMIReady(vmi, console.LoginToAlpine)
 				virtHandlerPod, err := getVirtHandlerPod()
 				Expect(err).ToNot(HaveOccurred())
 
@@ -657,8 +658,8 @@ var _ = SIGDescribe("[rfe_id:694][crit:medium][vendor:cnv-qe@redhat.com][level:c
 
 				By("Initiating DHCP client request after migration")
 
-				Expect(console.RunCommand(vmi, "sudo cirros-dhcpc down eth0\n", time.Second*time.Duration(15))).To(Succeed(), "failed to release dhcp client")
-				Expect(console.RunCommand(vmi, "sudo cirros-dhcpc up eth0\n", time.Second*time.Duration(15))).To(Succeed(), "failed to run dhcp client")
+				Expect(console.RunCommand(vmi, "sudo Alpine-dhcpc down eth0\n", time.Second*time.Duration(15))).To(Succeed(), "failed to release dhcp client")
+				Expect(console.RunCommand(vmi, "sudo Alpine-dhcpc up eth0\n", time.Second*time.Duration(15))).To(Succeed(), "failed to run dhcp client")
 
 				Expect(ping(podIP)).To(Succeed())
 			},
@@ -880,18 +881,18 @@ func runVMI(vmi *v1.VirtualMachineInstance) *v1.VirtualMachineInstance {
 	var err error
 	vmi, err = virtClient.VirtualMachineInstance(testsuite.GetTestNamespace(nil)).Create(context.Background(), vmi, metav1.CreateOptions{})
 	Expect(err).ToNot(HaveOccurred())
-	vmi = libwait.WaitUntilVMIReady(vmi, console.LoginToCirros)
+	vmi = libwait.WaitUntilVMIReady(vmi, console.LoginToAlpine)
 	return vmi
 }
 
 func vmiWithPodNetworkSet() *v1.VirtualMachineInstance {
-	return libvmifact.NewCirros(
+	return libvmifact.NewAlpine(
 		libvmi.WithInterface(*v1.DefaultBridgeNetworkInterface()),
 		libvmi.WithNetwork(v1.DefaultPodNetwork()))
 }
 
 func vmiWithCustomMacAddress(mac string) *v1.VirtualMachineInstance {
-	return libvmifact.NewCirros(
+	return libvmifact.NewAlpine(
 		libvmi.WithInterface(*libvmi.InterfaceWithMac(v1.DefaultBridgeNetworkInterface(), mac)),
 		libvmi.WithNetwork(v1.DefaultPodNetwork()))
 }
