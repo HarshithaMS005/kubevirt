@@ -102,9 +102,7 @@ alias(
     actual = "@buildifier_prebuilt//:buildozer",
 )
 
-buildifier(
-    name = "buildifier",
-)
+buildifier(name = "buildifier")
 
 genrule(
     name = "get-version",
