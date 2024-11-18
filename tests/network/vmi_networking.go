@@ -587,7 +587,11 @@ var _ = SIGDescribe("[rfe_id:694][crit:medium][vendor:cnv-qe@redhat.com][level:c
 				// Cluster nodes subnet (docker network gateway)
 				// Docker network subnet cidr definition:
 				// https://github.com/kubevirt/project-infra/blob/master/github/ci/shared-deployments/files/docker-daemon-mirror.conf#L5
-				ipv6Address := "2001:db8:1::1"
+				ipv6Address := "fd10:0:2::2"
+				// Use a different ipv6 address on s390x
+				if checks.IsS390X(testsuite.Arch) {
+					ipv6Address = "fd10:0:2::2"
+				}
 				if flags.IPV6ConnectivityCheckAddress != "" {
 					ipv6Address = flags.IPV6ConnectivityCheckAddress
 				}
@@ -753,12 +757,12 @@ var _ = SIGDescribe("[rfe_id:694][crit:medium][vendor:cnv-qe@redhat.com][level:c
 				Expect(err).ToNot(HaveOccurred())
 
 				By("Create another VMI")
-				anotherVmi = libvmifact.NewAlpineWithTestTooling(libnet.WithMasqueradeNetworking())
+				anotherVmi = libvmifact.NewFedora(libnet.WithMasqueradeNetworking())
 				anotherVmi, err = virtClient.VirtualMachineInstance(testsuite.GetTestNamespace(nil)).Create(context.Background(), anotherVmi, metav1.CreateOptions{})
 				Expect(err).ToNot(HaveOccurred())
 
 				By("Wait for VMIs to be ready")
-				anotherVmi = libwait.WaitUntilVMIReady(anotherVmi, console.LoginToAlpine)
+				anotherVmi = libwait.WaitUntilVMIReady(anotherVmi, console.LoginToFedora)
 
 				vmi = libwait.WaitUntilVMIReady(vmi, console.LoginToFedora)
 			})
