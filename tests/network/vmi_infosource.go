@@ -98,6 +98,7 @@ var _ = SIGDescribe("Infosource", func() {
 		})
 
 		It("should have the expected entries in vmi status", func() {
+			ginkgo.Skip("Multus test which is not run on downstream")
 			infoSourceDomainAndMultusStatus := netvmispec.NewInfoSource(
 				netvmispec.InfoSourceDomain, netvmispec.InfoSourceMultusStatus)
 			infoSourceDomainAndGAAndMultusStatus := netvmispec.NewInfoSource(
