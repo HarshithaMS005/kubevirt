@@ -26,6 +26,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
@@ -194,7 +195,7 @@ var istioTests = func(vmType VmType) {
 				migration := libmigration.New(vmi.Name, vmi.Namespace)
 				libmigration.RunMigrationAndExpectToCompleteWithDefaultTimeout(virtClient, migration)
 			})
-			It("All containers should complete in source virt-launcher pod after migration", func() {
+			It("[test_id:0123] All containers should complete in source virt-launcher pod after migration", func() {
 				const containerCompletionWaitTime = 60
 				Eventually(func() error {
 					return allContainersCompleted(sourcePodName)
@@ -274,7 +275,7 @@ var istioTests = func(vmType VmType) {
 				DescribeTable("request to VMI should reach HTTP server", func(targetPort int) {
 					Expect(checkVMIReachability(vmi, targetPort)).To(Succeed())
 				},
-					Entry("on service declared port on VMI with explicit ports", svcDeclaredTestPort),
+					Entry("[test_id:1123] on service declared port on VMI with explicit ports", svcDeclaredTestPort),
 					Entry("on service undeclared port on VMI with explicit ports", svcUndeclaredTestPort),
 				)
 			})
@@ -465,6 +466,7 @@ var istioTestsWithMasqueradeBinding = func() {
 
 var istioTestsWithPasstBinding = func() {
 	BeforeEach(func() {
+		ginkgo.Skip("passt is not supported on s390x.")
 		const passtBindingName = "passt"
 		passtSidecarImage := libregistry.GetUtilityImageFromRegistry("network-passt-binding")
 
