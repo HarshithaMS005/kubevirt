@@ -174,7 +174,7 @@ var _ = SIGDescribe("VirtualMachineInstance with macvtap network binding plugin"
 				Expect(libnet.PingFromVMConsole(clientVMI, serverIP)).To(Succeed(), "connectivity is expected *before* migrating the VMI")
 			})
 
-			It("should keep connectivity after a migration", func() {
+			It("[test_id:90801] should keep connectivity after a migration", func() {
 				const containerCompletionWaitTime = 60
 				serverVmiPod, err := libpod.GetPodByVirtualMachineInstance(serverVMI, testsuite.GetTestNamespace(nil))
 				Expect(err).ToNot(HaveOccurred())
