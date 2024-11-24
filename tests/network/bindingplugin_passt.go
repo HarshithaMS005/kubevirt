@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
@@ -56,6 +57,7 @@ var _ = SIGDescribe(" VirtualMachineInstance with passt network binding plugin",
 	var err error
 
 	BeforeEach(func() {
+		ginkgo.Skip("passt is not supported on s390x.")
 		const passtBindingName = "passt"
 
 		passtComputeMemoryOverheadWhenAllPortsAreForwarded := resource.MustParse("500Mi")
@@ -79,7 +81,7 @@ var _ = SIGDescribe(" VirtualMachineInstance with passt network binding plugin",
 		Expect(libnet.CreatePasstNetworkAttachmentDefinition(testsuite.GetTestNamespace(nil))).To(Succeed())
 	})
 
-	It("should apply the interface configuration", func() {
+	It("[test_id:2234] should apply the interface configuration", func() {
 		const testMACAddr = "02:02:02:02:02:02"
 		const testPCIAddr = "0000:01:00.0"
 		passtIface := libvmi.InterfaceWithPasstBindingPlugin()
