@@ -23,6 +23,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
@@ -46,6 +47,7 @@ import (
 var _ = SIGDescribe("network binding plugin", Serial, decorators.NetCustomBindingPlugins, func() {
 	Context("with CNI and Sidecar", func() {
 		BeforeEach(func() {
+			ginkgo.Skip("Macvtap and passt are not supported on s390x.")
 			const passtBindingName = "passt"
 			passtSidecarImage := libregistry.GetUtilityImageFromRegistry("network-passt-binding")
 
@@ -60,7 +62,7 @@ var _ = SIGDescribe("network binding plugin", Serial, decorators.NetCustomBindin
 			Expect(libnet.CreatePasstNetworkAttachmentDefinition(testsuite.GetTestNamespace(nil))).To(Succeed())
 		})
 
-		It("can be used by a VMI as its primary network", func() {
+		It("[test_id:56734] can be used by a VMI as its primary network", func() {
 			const (
 				macAddress = "02:00:00:00:00:02"
 			)
