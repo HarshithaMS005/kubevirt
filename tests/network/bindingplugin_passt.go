@@ -300,7 +300,7 @@ EOL`, inetSuffix, serverIP, serverPort)
 			Expect(libnet.PingFromVMConsole(vmi, dns, "-c 5", "-w 15")).To(Succeed())
 		})
 
-		It("[outside_connectivity]should be able to reach the outside world [IPv6]", func() {
+		It("[test_id:32345] [outside_connectivity]should be able to reach the outside world [IPv6]", func() {
 			libnet.SkipWhenClusterNotSupportIpv6()
 			// Cluster nodes subnet (docker network gateway)
 			// Docker network subnet cidr definition:
