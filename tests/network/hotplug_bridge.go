@@ -26,7 +26,6 @@ import (
 
 	"kubevirt.io/kubevirt/pkg/network/vmispec"
 
-	"github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
@@ -71,7 +70,6 @@ var _ = SIGDescribe("bridge nic-hotplug", func() {
 		var hotPluggedVMI *v1.VirtualMachineInstance
 
 		BeforeEach(func() {
-			ginkgo.Skip("HotPlug is not supported on s390x.")
 			By("Creating a VM")
 			vmi := libvmifact.NewFedora(
 				libvmi.WithInterface(*v1.DefaultMasqueradeNetworkInterface()),
@@ -239,7 +237,6 @@ var _ = SIGDescribe("bridge nic-hotunplug", func() {
 		var vmi *v1.VirtualMachineInstance
 
 		BeforeEach(func() {
-			ginkgo.Skip("HotUnplug is not supported on s390x.")
 			By("creating a NAD")
 			Expect(createBridgeNetworkAttachmentDefinition(
 				testsuite.GetTestNamespace(nil), nadName, linuxBridgeName)).To(Succeed())

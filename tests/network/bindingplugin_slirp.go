@@ -24,7 +24,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
@@ -62,7 +61,6 @@ var _ = SIGDescribe("Slirp", decorators.Networking, decorators.NetCustomBindingP
 	})
 
 	It("VMI with SLIRP interface, custom mac and port is configured correctly", func() {
-		ginkgo.Skip("SLIRP tests not supported on s390x")
 		vmi := libvmifact.NewAlpine(
 			libvmi.WithNetwork(v1.DefaultPodNetwork()),
 			libvmi.WithInterface(v1.Interface{
