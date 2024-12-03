@@ -29,7 +29,6 @@ import (
 	"kubevirt.io/kubevirt/tests/decorators"
 
 	expect "github.com/google/goexpect"
-	"github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	k8sv1 "k8s.io/api/core/v1"
@@ -206,7 +205,6 @@ var _ = SIGDescribe("Multus", Serial, decorators.Multus, func() {
 				Expect(err).NotTo(HaveOccurred())
 			})
 			It("[test_id:1751]should create a virtual machine with one interface", func() {
-				ginkgo.Skip("Multus tests which are not run in downstream")
 				By("checking virtual machine instance can ping using ptp cni plugin")
 				detachedVMI := libvmifact.NewFedora(
 					libvmi.WithCloudInitNoCloud(libvmici.WithNoCloudNetworkData(networkData)),
@@ -226,7 +224,6 @@ var _ = SIGDescribe("Multus", Serial, decorators.Multus, func() {
 			})
 
 			It("[test_id:1752]should create a virtual machine with one interface with network definition from different namespace", func() {
-				ginkgo.Skip("Multus tests which are not run in downstream")
 				checks.SkipIfOpenShift4("OpenShift 4 does not support usage of the network definition from the different namespace")
 				By("checking virtual machine instance can ping using ptp cni plugin")
 				detachedVMI := libvmifact.NewFedora(
@@ -247,7 +244,6 @@ var _ = SIGDescribe("Multus", Serial, decorators.Multus, func() {
 			})
 
 			It("[test_id:1753]should create a virtual machine with two interfaces", func() {
-				ginkgo.Skip("Multus tests which are not run in downstream")
 				By("checking virtual machine instance can ping using ptp cni plugin")
 				detachedVMI := libvmifact.NewFedora()
 
@@ -334,7 +330,6 @@ var _ = SIGDescribe("Multus", Serial, decorators.Multus, func() {
 
 		Context("VirtualMachineInstance with cni ptp plugin interface with custom MAC address", func() {
 			It("[test_id:1705]should configure valid custom MAC address on ptp interface when using tuning plugin", func() {
-				ginkgo.Skip("Multus tests which are not run in downstream")
 				customMacAddress := "50:00:00:00:90:0d"
 				ptpInterface := v1.Interface{
 					Name: "ptp",
@@ -622,7 +617,6 @@ var _ = SIGDescribe("Multus", Serial, decorators.Multus, func() {
 			})
 
 			It("Should allow outbound communication from VM under test - only if original MAC address is unchanged", func() {
-				ginkgo.Skip("Multus tests not suported as part of linuxbridge")
 				const (
 					vmUnderTestIPAddress = "10.2.1.1"
 					targetVMIPAddress    = "10.2.1.2"

@@ -24,7 +24,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
@@ -57,7 +56,6 @@ var _ = SIGDescribe(" VirtualMachineInstance with passt network binding plugin",
 	var err error
 
 	BeforeEach(func() {
-		ginkgo.Skip("passt is not supported on s390x.")
 		const passtBindingName = "passt"
 
 		passtComputeMemoryOverheadWhenAllPortsAreForwarded := resource.MustParse("500Mi")

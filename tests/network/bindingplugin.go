@@ -23,7 +23,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
@@ -47,7 +46,6 @@ import (
 var _ = SIGDescribe("network binding plugin", Serial, decorators.NetCustomBindingPlugins, func() {
 	Context("with CNI and Sidecar", func() {
 		BeforeEach(func() {
-			ginkgo.Skip("Macvtap and passt are not supported on s390x.")
 			const passtBindingName = "passt"
 			passtSidecarImage := libregistry.GetUtilityImageFromRegistry("network-passt-binding")
 

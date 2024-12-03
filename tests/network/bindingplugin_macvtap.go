@@ -24,7 +24,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
@@ -55,7 +54,6 @@ var _ = SIGDescribe("VirtualMachineInstance with macvtap network binding plugin"
 	)
 
 	BeforeEach(func() {
-		ginkgo.Skip("Macvtap is not supported on s390x.")
 		const macvtapBindingName = "macvtap"
 		err := config.WithNetBindingPlugin(macvtapBindingName, v1.InterfaceBindingPlugin{
 			DomainAttachmentType: v1.Tap,
