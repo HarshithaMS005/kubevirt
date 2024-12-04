@@ -72,8 +72,8 @@ var _ = SIGDescribe("Port-forward", func() {
 				Skip(skipIPv6Message)
 			}
 
-			vmi := createAlpineVMIWithPortsAndBlockUntilReady(virtClient, vmiDeclaredPorts)
-			vmnetserver.StartHTTPServerWithSourceIP(vmi, vmiHttpServerPort, getMasqueradeInternalAddress(ipFamily), console.LoginToAlpine)
+			vmi := createFedoraVMIWithPortsAndBlockUntilReady(virtClient, vmiDeclaredPorts)
+			vmnetserver.StartHTTPServerWithSourceIP(vmi, vmiHttpServerPort, getMasqueradeInternalAddress(ipFamily), console.LoginToFedora)
 
 			localPort = 1500 + GinkgoParallelProcess()
 			vmiPod, err := libpod.GetPodByVirtualMachineInstance(vmi, vmi.Namespace)
@@ -163,15 +163,15 @@ func killPortForwardCommand(portForwardCmd *exec.Cmd) error {
 	return err
 }
 
-func createAlpineVMIWithPortsAndBlockUntilReady(virtClient kubecli.KubevirtClient, ports []v1.Port) *v1.VirtualMachineInstance {
-	vmi := libvmifact.NewAlpine(
+func createFedoraVMIWithPortsAndBlockUntilReady(virtClient kubecli.KubevirtClient, ports []v1.Port) *v1.VirtualMachineInstance {
+	vmi := libvmifact.NewFedora(
 		libvmi.WithNetwork(v1.DefaultPodNetwork()),
 		libvmi.WithInterface(libvmi.InterfaceDeviceWithMasqueradeBinding(ports...)),
 	)
 
 	vmi, err := virtClient.VirtualMachineInstance(testsuite.NamespaceTestDefault).Create(context.Background(), vmi, metav1.CreateOptions{})
 	Expect(err).ToNot(HaveOccurred())
-	vmi = libwait.WaitUntilVMIReady(vmi, console.LoginToAlpine)
+	vmi = libwait.WaitUntilVMIReady(vmi, console.LoginToFedora)
 
 	return vmi
 }
@@ -186,7 +186,7 @@ func waitForPortForwardCmd(ipFamily k8sv1.IPFamily, stdout io.ReadCloser, src, d
 		_, err := stdout.Read(tmp)
 		Expect(err).NotTo(HaveOccurred())
 		return string(tmp)
-	}, 90*time.Second, 1*time.Second).Should(ContainSubstring(fmt.Sprintf("Forwarding from %s:%d -> %d", libnet.GetLoopbackAddressForURL(ipFamily), src, dst)))
+	}, 30*time.Second, 1*time.Second).Should(ContainSubstring(fmt.Sprintf("Forwarding from %s:%d -> %d", libnet.GetLoopbackAddressForURL(ipFamily), src, dst)))
 }
 
 func getMasqueradeInternalAddress(ipFamily k8sv1.IPFamily) string {
