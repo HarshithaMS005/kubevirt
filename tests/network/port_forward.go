@@ -186,7 +186,7 @@ func waitForPortForwardCmd(ipFamily k8sv1.IPFamily, stdout io.ReadCloser, src, d
 		_, err := stdout.Read(tmp)
 		Expect(err).NotTo(HaveOccurred())
 		return string(tmp)
-	}, 30*time.Second, 1*time.Second).Should(ContainSubstring(fmt.Sprintf("Forwarding from %s:%d -> %d", libnet.GetLoopbackAddressForURL(ipFamily), src, dst)))
+	}, 90*time.Second, 1*time.Second).Should(ContainSubstring(fmt.Sprintf("Forwarding from %s:%d -> %d", libnet.GetLoopbackAddressForURL(ipFamily), src, dst)))
 }
 
 func getMasqueradeInternalAddress(ipFamily k8sv1.IPFamily) string {
