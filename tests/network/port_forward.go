@@ -138,7 +138,7 @@ var _ = SIGDescribe("Port-forward", func() {
 				By(fmt.Sprintf("checking that service running on port %d can not be reached", nonDeclaredPort))
 				Expect(testConnectivityThroughLocalPort(ipFamily, localPort)).ToNot(Succeed())
 			},
-				Entry("IPv4", k8sv1.IPv4Protocol),
+				Entry("test_id:0000 IPv4", k8sv1.IPv4Protocol),
 				Entry("IPv6", k8sv1.IPv6Protocol),
 			)
 		})
