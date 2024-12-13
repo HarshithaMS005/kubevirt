@@ -180,7 +180,7 @@ var _ = SIGDescribe("bridge nic-hotplug", func() {
 			Expect(libnet.PingFromVMConsole(hotPluggedVMI, ip2)).To(Succeed())
 		},
 			Entry("In place", decorators.InPlaceHotplugNICs, inPlace),
-			Entry("Migration based", decorators.MigrationBasedHotplugNICs, migrationBased),
+			Entry("[test_id:9092] Migration based", decorators.MigrationBasedHotplugNICs, migrationBased),
 		)
 
 		DescribeTable("is able to hotplug multiple network interfaces", func(plugMethod hotplugMethod) {
@@ -219,7 +219,7 @@ var _ = SIGDescribe("bridge nic-hotplug", func() {
 			Expect(libnet.InterfaceExists(hotPluggedVMI, "eth2")).To(Succeed())
 		},
 			Entry("In place", decorators.InPlaceHotplugNICs, inPlace),
-			Entry("Migration based", decorators.MigrationBasedHotplugNICs, migrationBased),
+			Entry("[test_id:9091] Migration based", decorators.MigrationBasedHotplugNICs, migrationBased),
 		)
 	})
 })
@@ -291,7 +291,7 @@ var _ = SIGDescribe("bridge nic-hotunplug", func() {
 			verifyUnpluggedIfaceClearedFromVMandVMI(vm.Namespace, vm.Name, linuxBridgeNetworkName1)
 		},
 			Entry("In place", decorators.InPlaceHotplugNICs, inPlace),
-			Entry("Migration based", decorators.MigrationBasedHotplugNICs, migrationBased),
+			Entry("[test_id:9093] Migration based", decorators.MigrationBasedHotplugNICs, migrationBased),
 		)
 	})
 })
