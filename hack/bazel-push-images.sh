@@ -30,9 +30,12 @@ default_targets="
     virt-handler
     virt-launcher
     alpine-container-disk-demo
+    alpine-custom-container-disk-demo
     fedora-with-test-tooling-container-disk
     vm-killer
     sidecar-shim
+    disks-images-provider
+    libguestfs-tools
 "
 
 case ${ARCHITECTURE} in
@@ -42,7 +45,6 @@ case ${ARCHITECTURE} in
         virt-exportserver
         virt-exportproxy
         conformance
-        libguestfs-tools
         pr-helper
         example-hook-sidecar
         example-disk-mutation-hook-sidecar
@@ -53,7 +55,6 @@ case ${ARCHITECTURE} in
         alpine-ext-kernel-boot-demo
         alpine-with-test-tooling-container-disk
         fedora-realtime-container-disk
-        disks-images-provider
         nfs-server
         winrmcli
         network-slirp-binding
