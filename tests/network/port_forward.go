@@ -74,8 +74,8 @@ var _ = SIGDescribe("Port-forward", func() {
 				Skip(skipIPv6Message)
 			}
 
-			vmi := createAlpineVMIWithPortsAndBlockUntilReady(virtClient, vmiDeclaredPorts)
-			vmnetserver.StartHTTPServerWithSourceIP(vmi, vmiHttpServerPort, getMasqueradeInternalAddress(ipFamily), console.LoginToAlpine)
+			vmi := createFedoraVMIWithPortsAndBlockUntilReady(virtClient, vmiDeclaredPorts)
+			vmnetserver.StartHTTPServerWithSourceIP(vmi, vmiHttpServerPort, getMasqueradeInternalAddress(ipFamily), console.LoginToFedora)
 
 			localPort = 1500 + GinkgoParallelProcess()
 			vmiPod, err := libpod.GetPodByVirtualMachineInstance(vmi, vmi.Namespace)
@@ -105,7 +105,7 @@ var _ = SIGDescribe("Port-forward", func() {
 				By(fmt.Sprintf("checking that service running on port %d can be reached", declaredPort))
 				Expect(testConnectivityThroughLocalPort(ipFamily, localPort)).To(Succeed())
 			},
-				Entry("IPv4", k8sv1.IPv4Protocol),
+				Entry("[test_id:2222] IPv4", k8sv1.IPv4Protocol),
 				Entry("IPv6", k8sv1.IPv6Protocol),
 			)
 		})
@@ -122,7 +122,7 @@ var _ = SIGDescribe("Port-forward", func() {
 				By(fmt.Sprintf("checking that service running on port %d can be reached", nonDeclaredPort))
 				Expect(testConnectivityThroughLocalPort(ipFamily, localPort)).To(Succeed())
 			},
-				Entry("IPv4", k8sv1.IPv4Protocol),
+				Entry("[test_id:1111] IPv4", k8sv1.IPv4Protocol),
 				Entry("IPv6", k8sv1.IPv6Protocol),
 			)
 		})
@@ -140,7 +140,7 @@ var _ = SIGDescribe("Port-forward", func() {
 				By(fmt.Sprintf("checking that service running on port %d can not be reached", nonDeclaredPort))
 				Expect(testConnectivityThroughLocalPort(ipFamily, localPort)).ToNot(Succeed())
 			},
-				Entry("IPv4", k8sv1.IPv4Protocol),
+				Entry("[test_id:0000] IPv4", k8sv1.IPv4Protocol),
 				Entry("IPv6", k8sv1.IPv6Protocol),
 			)
 		})
@@ -165,15 +165,15 @@ func killPortForwardCommand(portForwardCmd *exec.Cmd) error {
 	return err
 }
 
-func createAlpineVMIWithPortsAndBlockUntilReady(virtClient kubecli.KubevirtClient, ports []v1.Port) *v1.VirtualMachineInstance {
-	vmi := libvmifact.NewAlpine(
+func createFedoraVMIWithPortsAndBlockUntilReady(virtClient kubecli.KubevirtClient, ports []v1.Port) *v1.VirtualMachineInstance {
+	vmi := libvmifact.NewFedora(
 		libvmi.WithNetwork(v1.DefaultPodNetwork()),
 		libvmi.WithInterface(libvmi.InterfaceDeviceWithMasqueradeBinding(ports...)),
 	)
 
 	vmi, err := virtClient.VirtualMachineInstance(testsuite.NamespaceTestDefault).Create(context.Background(), vmi, metav1.CreateOptions{})
 	Expect(err).ToNot(HaveOccurred())
-	vmi = libwait.WaitUntilVMIReady(vmi, console.LoginToAlpine)
+	vmi = libwait.WaitUntilVMIReady(vmi, console.LoginToFedora)
 
 	return vmi
 }
