@@ -417,6 +417,21 @@ var _ = SIGDescribe("[rfe_id:694][crit:medium][vendor:cnv-qe@redhat.com][level:c
 			dnsVMI, err := virtClient.VirtualMachineInstance(testsuite.GetTestNamespace(dnsVMI)).Create(context.Background(), dnsVMI, metav1.CreateOptions{})
 			Expect(err).ToNot(HaveOccurred())
 			dnsVMI = libwait.WaitUntilVMIReady(dnsVMI, console.LoginToFedora)
+
+			// Disable systemd-resolved
+			err = console.SafeExpectBatch(dnsVMI, []expect.Batcher{
+				&expect.BSnd{S: "sudo systemctl stop systemd-resolved\n"},
+				&expect.BExp{R: console.PromptExpression},
+				&expect.BSnd{S: "sudo systemctl disable systemd-resolved\n"},
+				&expect.BExp{R: console.PromptExpression},
+				&expect.BSnd{S: "sudo rm -f /etc/resolv.conf\n"},
+				&expect.BExp{R: console.PromptExpression},
+				&expect.BSnd{S: "echo -e \"nameserver 8.8.8.8\\nnameserver 4.2.2.1\\nnameserver 1.1.1.1\\nsearch example.com\" | sudo tee /etc/resolv.conf\n"},
+				&expect.BExp{R: console.PromptExpression},
+			}, 30)
+			Expect(err).ToNot(HaveOccurred())
+
+			// Validate /etc/resolv.conf
 			const catResolvConf = "cat /etc/resolv.conf\n"
 			err = console.SafeExpectBatch(dnsVMI, []expect.Batcher{
 				&expect.BSnd{S: "\n"},
