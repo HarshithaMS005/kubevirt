@@ -51,7 +51,7 @@ func VerifyDynamicInterfaceChange(vmi *v1.VirtualMachineInstance, queueCount int
 	}
 	ExpectWithOffset(1, secondaryNetworksNames).NotTo(BeEmpty())
 	EventuallyWithOffset(1, func() []v1.VirtualMachineInstanceNetworkInterface {
-		return cleanMACAddressesFromStatus(vmiCurrentInterfaces(vmi.GetNamespace(), vmi.GetName()))
+		return cleanMACAndIPAddressesFromStatus(vmiCurrentInterfaces(vmi.GetNamespace(), vmi.GetName()))
 	}, 30*time.Second).Should(
 		ConsistOf(interfaceStatusFromInterfaceNames(queueCount, secondaryNetworksNames...)))
 
@@ -107,9 +107,12 @@ func indexVMsSecondaryNetworks(vmi *v1.VirtualMachineInstance) map[string]v1.Net
 	return indexedSecondaryNetworks
 }
 
-func cleanMACAddressesFromStatus(status []v1.VirtualMachineInstanceNetworkInterface) []v1.VirtualMachineInstanceNetworkInterface {
+func cleanMACAndIPAddressesFromStatus(status []v1.VirtualMachineInstanceNetworkInterface) []v1.VirtualMachineInstanceNetworkInterface {
 	for i := range status {
 		status[i].MAC = ""
+		//For s390x, as ipv6.method=auto by default, IP & IPs has value, so setting to zero-value like MAC.
+		status[i].IP = ""
+		status[i].IPs = nil
 	}
 	return status
 }
