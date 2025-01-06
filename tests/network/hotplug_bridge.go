@@ -281,6 +281,7 @@ var _ = SIGDescribe("bridge nic-hotunplug", func() {
 			Expect(removeInterface(vm, linuxBridgeNetworkName1)).To(Succeed())
 
 			if plugMethod == migrationBased {
+				Skip("Skipping this test as it is migration based")
 				By("migrating the VMI")
 				migration := libmigration.New(vmi.Name, vmi.Namespace)
 				migrationUID := libmigration.RunMigrationAndExpectToCompleteWithDefaultTimeout(kubevirt.Client(), migration)
