@@ -28,6 +28,7 @@ import (
 	"time"
 
 	expect "github.com/google/goexpect"
+	"github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
@@ -265,6 +266,7 @@ var _ = SIGDescribe("[rfe_id:694][crit:medium][vendor:cnv-qe@redhat.com][level:c
 
 	Context("VirtualMachineInstance with custom interface model", func() {
 		It("[test_id:1770]should expose the right device type to the guest", func() {
+			ginkgo.Skip("Device model is not supported on s390x")
 			By("checking the device vendor in /sys/class")
 			// Create a machine with e1000 interface model
 			// Use alpine because Alpine dhcp client starts prematurely before link is ready
@@ -319,6 +321,7 @@ var _ = SIGDescribe("[rfe_id:694][crit:medium][vendor:cnv-qe@redhat.com][level:c
 	})
 
 	It("VMI with an interface that has ACPI Index set", func() {
+		ginkgo.Skip("PCI not supported on s390x")
 		const acpiIndex = 101
 		const pciAddress = "0000:01:00.0"
 		iface := *v1.DefaultMasqueradeNetworkInterface()
