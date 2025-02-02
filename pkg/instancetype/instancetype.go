@@ -13,16 +13,13 @@ import (
 	instancetypev1beta1 "kubevirt.io/api/instancetype/v1beta1"
 	"kubevirt.io/client-go/kubecli"
 
-	"kubevirt.io/kubevirt/pkg/instancetype/annotations"
 	"kubevirt.io/kubevirt/pkg/instancetype/apply"
 	"kubevirt.io/kubevirt/pkg/instancetype/conflict"
 	"kubevirt.io/kubevirt/pkg/instancetype/expand"
 	"kubevirt.io/kubevirt/pkg/instancetype/find"
 	"kubevirt.io/kubevirt/pkg/instancetype/infer"
-	preferenceAnnotations "kubevirt.io/kubevirt/pkg/instancetype/preference/annotations"
 	preferenceApply "kubevirt.io/kubevirt/pkg/instancetype/preference/apply"
 	preferenceFind "kubevirt.io/kubevirt/pkg/instancetype/preference/find"
-	"kubevirt.io/kubevirt/pkg/instancetype/preference/requirements"
 	"kubevirt.io/kubevirt/pkg/instancetype/preference/validation"
 	"kubevirt.io/kubevirt/pkg/instancetype/revision"
 	"kubevirt.io/kubevirt/pkg/instancetype/upgrade"
@@ -36,7 +33,6 @@ type Methods interface {
 	FindPreferenceSpec(vm *virtv1.VirtualMachine) (*instancetypev1beta1.VirtualMachinePreferenceSpec, error)
 	InferDefaultInstancetype(vm *virtv1.VirtualMachine) error
 	InferDefaultPreference(vm *virtv1.VirtualMachine) error
-	CheckPreferenceRequirements(instancetypeSpec *instancetypev1beta1.VirtualMachineInstancetypeSpec, preferenceSpec *instancetypev1beta1.VirtualMachinePreferenceSpec, vmiSpec *virtv1.VirtualMachineInstanceSpec) (conflict.Conflicts, error)
 	ApplyToVM(vm *virtv1.VirtualMachine) error
 	Expand(vm *virtv1.VirtualMachine, clusterConfig *virtconfig.ClusterConfig) (*virtv1.VirtualMachine, error)
 }
@@ -88,11 +84,6 @@ func CompareRevisions(revisionA, revisionB *appsv1.ControllerRevision) (bool, er
 	return revision.Compare(revisionA, revisionB)
 }
 
-func (m *InstancetypeMethods) CheckPreferenceRequirements(instancetypeSpec *instancetypev1beta1.VirtualMachineInstancetypeSpec, preferenceSpec *instancetypev1beta1.VirtualMachinePreferenceSpec, vmiSpec *virtv1.VirtualMachineInstanceSpec) (conflict.Conflicts, error) {
-	conflicts, err := requirements.New().Check(instancetypeSpec, preferenceSpec, vmiSpec)
-	return conflicts, err
-}
-
 func (m *InstancetypeMethods) ApplyToVmi(field *k8sfield.Path, instancetypeSpec *instancetypev1beta1.VirtualMachineInstancetypeSpec, preferenceSpec *instancetypev1beta1.VirtualMachinePreferenceSpec, vmiSpec *virtv1.VirtualMachineInstanceSpec, vmiMetadata *metav1.ObjectMeta) conflict.Conflicts {
 	conflicts := apply.NewVMIApplier().ApplyToVMI(field, instancetypeSpec, preferenceSpec, vmiSpec, vmiMetadata)
 	return conflicts
@@ -112,14 +103,6 @@ func (m *InstancetypeMethods) InferDefaultInstancetype(vm *virtv1.VirtualMachine
 
 func (m *InstancetypeMethods) InferDefaultPreference(vm *virtv1.VirtualMachine) error {
 	return infer.New(m.Clientset).Preference(vm)
-}
-
-func AddInstancetypeNameAnnotations(vm *virtv1.VirtualMachine, target metav1.Object) {
-	annotations.Set(vm, target)
-}
-
-func AddPreferenceNameAnnotations(vm *virtv1.VirtualMachine, target metav1.Object) {
-	preferenceAnnotations.Set(vm, target)
 }
 
 func ApplyDevicePreferences(preferenceSpec *instancetypev1beta1.VirtualMachinePreferenceSpec, vmiSpec *virtv1.VirtualMachineInstanceSpec) {
