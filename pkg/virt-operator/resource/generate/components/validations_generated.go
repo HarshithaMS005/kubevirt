@@ -883,6 +883,10 @@ var CRDsValidation map[string]string = map[string]string{
             developerConfiguration:
               description: DeveloperConfiguration holds developer options
               properties:
+                clusterProfiler:
+                  description: Enable the ability to pprof profile KubeVirt control
+                    plane
+                  type: boolean
                 cpuAllocationRatio:
                   description: |-
                     For each requested virtual CPU, CPUAllocationRatio defines how much physical CPU to request per VMI
@@ -1574,9 +1578,8 @@ var CRDsValidation map[string]string = map[string]string{
               nullable: true
               type: string
             vmStateStorageClass:
-              description: |-
-                VMStateStorageClass is the name of the storage class to use for the PVCs created to preserve VM state, like TPM.
-                The storage class must support RWX in filesystem mode.
+              description: VMStateStorageClass is the name of the storage class to
+                use for the PVCs created to preserve VM state, like TPM.
               type: string
             webhookConfiguration:
               description: |-
@@ -6400,7 +6403,11 @@ var CRDsValidation map[string]string = map[string]string{
                               state:
                                 description: |-
                                   State represents the requested operational state of the interface.
-                                  The (only) value supported is 'absent', expressing a request to remove the interface.
+                                  The supported values are:
+                                  'absent', expressing a request to remove the interface.
+                                  'down', expressing a request to set the link down.
+                                  'up', expressing a request to set the link up.
+                                  Empty value functions as 'up'.
                                 type: string
                               tag:
                                 description: If specified, the virtual network interface
@@ -11620,7 +11627,11 @@ var CRDsValidation map[string]string = map[string]string{
                       state:
                         description: |-
                           State represents the requested operational state of the interface.
-                          The (only) value supported is 'absent', expressing a request to remove the interface.
+                          The supported values are:
+                          'absent', expressing a request to remove the interface.
+                          'down', expressing a request to set the link down.
+                          'up', expressing a request to set the link up.
+                          Empty value functions as 'up'.
                         type: string
                       tag:
                         description: If specified, the virtual network interface address
@@ -14820,7 +14831,11 @@ var CRDsValidation map[string]string = map[string]string{
                       state:
                         description: |-
                           State represents the requested operational state of the interface.
-                          The (only) value supported is 'absent', expressing a request to remove the interface.
+                          The supported values are:
+                          'absent', expressing a request to remove the interface.
+                          'down', expressing a request to set the link down.
+                          'up', expressing a request to set the link up.
+                          Empty value functions as 'up'.
                         type: string
                       tag:
                         description: If specified, the virtual network interface address
@@ -17234,7 +17249,11 @@ var CRDsValidation map[string]string = map[string]string{
                               state:
                                 description: |-
                                   State represents the requested operational state of the interface.
-                                  The (only) value supported is 'absent', expressing a request to remove the interface.
+                                  The supported values are:
+                                  'absent', expressing a request to remove the interface.
+                                  'down', expressing a request to set the link down.
+                                  'up', expressing a request to set the link up.
+                                  Empty value functions as 'up'.
                                 type: string
                               tag:
                                 description: If specified, the virtual network interface
@@ -19145,6 +19164,14 @@ var CRDsValidation map[string]string = map[string]string{
       type: object
     spec:
       properties:
+        nameGeneration:
+          description: Options for the name generation in a pool.
+          properties:
+            appendIndexToConfigMapRefs:
+              type: boolean
+            appendIndexToSecretRefs:
+              type: boolean
+          type: object
         paused:
           description: Indicates that the pool is paused.
           type: boolean
@@ -21720,7 +21747,11 @@ var CRDsValidation map[string]string = map[string]string{
                                       state:
                                         description: |-
                                           State represents the requested operational state of the interface.
-                                          The (only) value supported is 'absent', expressing a request to remove the interface.
+                                          The supported values are:
+                                          'absent', expressing a request to remove the interface.
+                                          'down', expressing a request to set the link down.
+                                          'up', expressing a request to set the link up.
+                                          Empty value functions as 'up'.
                                         type: string
                                       tag:
                                         description: If specified, the virtual network
@@ -26906,7 +26937,11 @@ var CRDsValidation map[string]string = map[string]string{
                                           state:
                                             description: |-
                                               State represents the requested operational state of the interface.
-                                              The (only) value supported is 'absent', expressing a request to remove the interface.
+                                              The supported values are:
+                                              'absent', expressing a request to remove the interface.
+                                              'down', expressing a request to set the link down.
+                                              'up', expressing a request to set the link up.
+                                              Empty value functions as 'up'.
                                             type: string
                                           tag:
                                             description: If specified, the virtual

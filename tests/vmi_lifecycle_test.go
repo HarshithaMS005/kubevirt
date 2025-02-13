@@ -21,10 +21,8 @@ package tests_test
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net/http"
-	"os"
 	"regexp"
 	"strconv"
 	"strings"
@@ -55,8 +53,6 @@ import (
 	"kubevirt.io/kubevirt/pkg/virt-config/featuregate"
 	"kubevirt.io/kubevirt/pkg/virt-controller/services"
 	device_manager "kubevirt.io/kubevirt/pkg/virt-handler/device-manager"
-	"kubevirt.io/kubevirt/pkg/virt-launcher/virtwrap/api"
-	"kubevirt.io/kubevirt/pkg/virt-launcher/virtwrap/converter"
 	"kubevirt.io/kubevirt/tests/console"
 	cd "kubevirt.io/kubevirt/tests/containerdisk"
 	"kubevirt.io/kubevirt/tests/decorators"
@@ -1213,55 +1209,6 @@ var _ = Describe("[rfe_id:273][crit:high][vendor:cnv-qe@redhat.com][level:compon
 			)
 		})
 
-		Context("VirtualMachineInstance Emulation Mode", decorators.SoftwareEmulation, func() {
-
-			It("[test_id:1644]should be reflected in domain XML", func() {
-				vmi := libvmifact.NewAlpine()
-				err := kubevirt.Client().RestClient().Post().Resource("virtualmachineinstances").Namespace(testsuite.GetTestNamespace(vmi)).Body(vmi).Do(context.Background()).Error()
-				Expect(err).ToNot(HaveOccurred(), "Should post the VMI")
-
-				listOptions := metav1.ListOptions{}
-
-				Eventually(func() int {
-					podList, err := kubevirt.Client().CoreV1().Pods(testsuite.GetTestNamespace(vmi)).List(context.Background(), listOptions)
-					Expect(err).ToNot(HaveOccurred(), "Should list the pods")
-					return len(podList.Items)
-				}, 75, 0.5).Should(Equal(1), "There should be only one pod")
-
-				Eventually(func() error {
-					podList, err := kubevirt.Client().CoreV1().Pods(testsuite.GetTestNamespace(vmi)).List(context.Background(), listOptions)
-					Expect(err).ToNot(HaveOccurred(), "Should list the pods")
-					for _, item := range podList.Items {
-						if strings.HasPrefix(item.Name, vmi.ObjectMeta.GenerateName) {
-							return nil
-						}
-					}
-					return fmt.Errorf("Associated pod for VirtualMachineInstance '%s' not found", vmi.Name)
-				}, 75, 0.5).Should(Succeed(), "Should find the VMI pod")
-
-				getOptions := metav1.GetOptions{}
-				var newVMI *v1.VirtualMachineInstance
-
-				newVMI, err = kubevirt.Client().VirtualMachineInstance(testsuite.GetTestNamespace(newVMI)).Get(context.Background(), vmi.Name, getOptions)
-				Expect(err).ToNot(HaveOccurred(), "Should get VMI")
-
-				domain := &api.Domain{}
-				context := &converter.ConverterContext{
-					VirtualMachine: newVMI,
-					AllowEmulation: true,
-				}
-				err = converter.Convert_v1_VirtualMachineInstance_To_api_Domain(newVMI, domain, context)
-				Expect(err).ToNot(HaveOccurred())
-
-				expectedType := ""
-				if _, err := os.Stat("/dev/kvm"); errors.Is(err, os.ErrNotExist) {
-					expectedType = "qemu"
-				}
-
-				Expect(domain.Spec.Type).To(Equal(expectedType), "VMI domain type should be of expectedType")
-			})
-		})
-
 		Context("VM Accelerated Mode", decorators.WgS390x, func() {
 
 			It("[test_id:1648]Should provide KVM via plugin framework", func() {
@@ -1720,16 +1667,6 @@ func pkillVMI(client kubecli.KubevirtClient, vmi *v1.VirtualMachineInstance) err
 	pod.Spec.NodeName = node
 	_, err := client.CoreV1().Pods(testsuite.GetTestNamespace(pod)).Create(context.Background(), pod, metav1.CreateOptions{})
 	return err
-}
-
-func addBootOrderToDisk(vmi *v1.VirtualMachineInstance, diskName string, bootorder *uint) *v1.VirtualMachineInstance {
-	for i, d := range vmi.Spec.Domain.Devices.Disks {
-		if d.Name == diskName {
-			vmi.Spec.Domain.Devices.Disks[i].BootOrder = bootorder
-			return vmi
-		}
-	}
-	return vmi
 }
 
 func waitForVMIRebooted(vmi *v1.VirtualMachineInstance, login console.LoginToFunction) {
