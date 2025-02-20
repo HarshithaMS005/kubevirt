@@ -92,10 +92,10 @@ var _ = Describe(SIG("[ref_id:1182]Probes", func() {
 				Expect(err).ToNot(HaveOccurred(), "should attach the backend pod with readiness probe")
 
 				By(specifyingVMReadinessProbe)
-				vmi = createReadyFedoraVMIWithReadinessProbereadinessProbe)
+				vmi = createReadyFedoraVMIWithReadinessProbe(readinessProbe)
 			} else if !isExecProbe(readinessProbe) {
 				By(specifyingVMReadinessProbe)
-				vmi = createReadyFedoraVMIWithReadinessProbereadinessProbe)
+				vmi = createReadyFedoraVMIWithReadinessProbe(readinessProbe)
 
 				Expect(matcher.ThisVMI(vmi)()).To(matcher.HaveConditionMissingOrFalse(v1.VirtualMachineInstanceReady))
 
