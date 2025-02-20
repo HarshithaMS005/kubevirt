@@ -284,7 +284,7 @@ func createReadyFedoraVMIWithReadinessProbe(probe *v1.Probe) *v1.VirtualMachineI
 }
 
 func createReadyFedoraVMIWithLivenessProbe(probe *v1.Probe) *v1.VirtualMachineInstance {
-	vmi := libvmifact.NewFedoralibnet.WithMasqueradeNetworking(), withLivelinessProbe(probe))
+	vmi := libvmifact.NewFedora(libnet.WithMasqueradeNetworking(), withLivelinessProbe(probe))
 
 	return libvmops.RunVMIAndExpectLaunchIgnoreWarnings(vmi, 180)
 }
