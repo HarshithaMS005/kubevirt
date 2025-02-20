@@ -278,8 +278,8 @@ func guestAgentOperation(vmi *v1.VirtualMachineInstance, startStopOperation stri
 	}, 120)
 }
 
-func createReadyFedoraVMIWithReadinessProbeprobe *v1.Probe) *v1.VirtualMachineInstance {
-	vmi := libvmifact.NewFedoralibnet.WithMasqueradeNetworking(), withReadinessProbe(probe))
+func createReadyFedoraVMIWithReadinessProbe(probe *v1.Probe) *v1.VirtualMachineInstance {
+	vmi := libvmifact.NewFedora(libnet.WithMasqueradeNetworking(), withReadinessProbe(probe))
 	return libvmops.RunVMIAndExpectLaunchIgnoreWarnings(vmi, 180)
 }
 
