@@ -46,7 +46,6 @@ import (
 	"kubevirt.io/kubevirt/tests/decorators"
 	"kubevirt.io/kubevirt/tests/exec"
 	"kubevirt.io/kubevirt/tests/flags"
-	"kubevirt.io/kubevirt/tests/framework/checks"
 	"kubevirt.io/kubevirt/tests/framework/kubevirt"
 	"kubevirt.io/kubevirt/tests/libmigration"
 	"kubevirt.io/kubevirt/tests/libnet"
@@ -369,23 +368,24 @@ var _ = Describe(SIG("[rfe_id:694][crit:medium][vendor:cnv-qe@redhat.com][level:
 			dnsVMI = libwait.WaitUntilVMIReady(dnsVMI, console.LoginToFedora)
 
 			// Disable systemd-resolved
-			if checks.IsS390X(testsuite.Arch) {
-				err = console.SafeExpectBatch(dnsVMI, []expect.Batcher{
-					&expect.BSnd{S: "systemctl is-active systemd-resolved && sudo systemctl stop systemd-resolved || echo 'not running'\n"},
-					&expect.BExp{R: console.PromptExpression},
-					&expect.BSnd{S: "systemctl is-enabled systemd-resolved && sudo systemctl disable systemd-resolved || echo 'not enabled'\n"},
-					&expect.BExp{R: console.PromptExpression},
-					&expect.BSnd{S: "sudo rm -f /etc/resolv.conf\n"},
-					&expect.BExp{R: console.PromptExpression},
-					&expect.BSnd{S: "echo -e \"nameserver 8.8.8.8\\nnameserver 4.2.2.1\\nnameserver 1.1.1.1\\nsearch example.com\" | sudo tee /etc/resolv.conf\n"},
-					&expect.BExp{R: console.PromptExpression},
-					&expect.BSnd{S: "sudo systemctl restart NetworkManager\n"}, // Ensure DNS changes take effect
-					&expect.BExp{R: console.PromptExpression},
-				}, 30)
-				Expect(err).ToNot(HaveOccurred())
-			}
+			//if libnode.GetArch() == "s390x" {
+			//	err = console.SafeExpectBatch(dnsVMI, []expect.Batcher{
+			//		&expect.BSnd{S: "systemctl is-active systemd-resolved && sudo systemctl stop systemd-resolved || echo 'not running'\n"},
+			//		&expect.BExp{R: console.PromptExpression},
+			//		&expect.BSnd{S: "systemctl is-enabled systemd-resolved && sudo systemctl disable systemd-resolved || echo 'not enabled'\n"},
+			//		&expect.BExp{R: console.PromptExpression},
+			//		&expect.BSnd{S: "sudo rm -f /etc/resolv.conf\n"},
+			//		&expect.BExp{R: console.PromptExpression},
+			//		&expect.BSnd{S: "echo -e \"nameserver 8.8.8.8\\nnameserver 4.2.2.1\\nnameserver 1.1.1.1\\nsearch example.com\" | sudo tee /etc/resolv.conf\n"},
+			//		&expect.BExp{R: console.PromptExpression},
+			//		&expect.BSnd{S: "sudo systemctl restart NetworkManager\n"}, // Ensure DNS changes take effect
+			//		&expect.BExp{R: console.PromptExpression},
+			//	}, 30)
+			//	Expect(err).ToNot(HaveOccurred())
+			//}
 
-			const catResolvConf = "cat /etc/resolv.conf\n"
+			// Since we are using Fedora image the dns config will be present in /etc/systemd/resolved.conf
+			const catResolvConf = "cat /etc/systemd/resolv.conf\n"
 			err = console.SafeExpectBatch(dnsVMI, []expect.Batcher{
 				&expect.BSnd{S: "\n"},
 				&expect.BExp{R: console.PromptExpression},
@@ -401,7 +401,7 @@ var _ = Describe(SIG("[rfe_id:694][crit:medium][vendor:cnv-qe@redhat.com][level:
 				&expect.BExp{R: "nameserver 4.2.2.1"},
 				&expect.BSnd{S: "\n"},
 				&expect.BExp{R: console.PromptExpression},
-				&expect.BSnd{S: "cat /etc/resolv.conf\n"},
+				&expect.BSnd{S: "cat /etc/systemd/resolv.conf\n"},
 				&expect.BExp{R: "nameserver 1.1.1.1"},
 				&expect.BSnd{S: "\n"},
 				&expect.BExp{R: console.PromptExpression},
@@ -583,7 +583,7 @@ var _ = Describe(SIG("[rfe_id:694][crit:medium][vendor:cnv-qe@redhat.com][level:
 				ipv6Address := "2001:db8:1::1"
 
 				// Use a different ipv6 address on s390x
-				if checks.IsS390X(testsuite.Arch) {
+				if libnode.GetArch() == "s390x" {
 					ipv6Address = "fd10:0:2::2"
 				}
 
