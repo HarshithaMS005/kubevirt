@@ -368,24 +368,24 @@ var _ = SIGDescribe("[rfe_id:694][crit:medium][vendor:cnv-qe@redhat.com][level:c
 			dnsVMI = libwait.WaitUntilVMIReady(dnsVMI, console.LoginToFedora)
 
 			// Disable systemd-resolved
-			//if libnode.GetArch() == "s390x" {
-			//	err = console.SafeExpectBatch(dnsVMI, []expect.Batcher{
-			//		&expect.BSnd{S: "systemctl is-active systemd-resolved && sudo systemctl stop systemd-resolved || echo 'not running'\n"},
-			//		&expect.BExp{R: console.PromptExpression},
-			//		&expect.BSnd{S: "systemctl is-enabled systemd-resolved && sudo systemctl disable systemd-resolved || echo 'not enabled'\n"},
-			//		&expect.BExp{R: console.PromptExpression},
-			//		&expect.BSnd{S: "sudo rm -f /etc/resolv.conf\n"},
-			//		&expect.BExp{R: console.PromptExpression},
-			//		&expect.BSnd{S: "echo -e \"nameserver 8.8.8.8\\nnameserver 4.2.2.1\\nnameserver 1.1.1.1\\nsearch example.com\" | sudo tee /etc/resolv.conf\n"},
-			//		&expect.BExp{R: console.PromptExpression},
-			//		&expect.BSnd{S: "sudo systemctl restart NetworkManager\n"}, // Ensure DNS changes take effect
-			//		&expect.BExp{R: console.PromptExpression},
-			//	}, 30)
-			//	Expect(err).ToNot(HaveOccurred())
-			//}
+			if libnode.GetArch() == "s390x" {
+				err = console.SafeExpectBatch(dnsVMI, []expect.Batcher{
+					&expect.BSnd{S: "systemctl is-active systemd-resolved && sudo systemctl stop systemd-resolved || echo 'not running'\n"},
+					&expect.BExp{R: console.PromptExpression},
+					&expect.BSnd{S: "systemctl is-enabled systemd-resolved && sudo systemctl disable systemd-resolved || echo 'not enabled'\n"},
+					&expect.BExp{R: console.PromptExpression},
+					&expect.BSnd{S: "sudo rm -f /etc/resolv.conf\n"},
+					&expect.BExp{R: console.PromptExpression},
+					&expect.BSnd{S: "echo -e \"nameserver 8.8.8.8\\nnameserver 4.2.2.1\\nnameserver 1.1.1.1\\nsearch example.com\" | sudo tee /etc/resolv.conf\n"},
+					&expect.BExp{R: console.PromptExpression},
+					&expect.BSnd{S: "sudo systemctl restart NetworkManager\n"}, // Ensure DNS changes take effect
+					&expect.BExp{R: console.PromptExpression},
+				}, 30)
+				Expect(err).ToNot(HaveOccurred())
+			}
 
 			// Since we are using Fedora image the dns config will be present in /etc/systemd/resolved.conf
-			const catResolvConf = "cat /etc/systemd/resolv.conf\n"
+			const catResolvConf = "cat /etc/resolv.conf\n"
 			err = console.SafeExpectBatch(dnsVMI, []expect.Batcher{
 				&expect.BSnd{S: "\n"},
 				&expect.BExp{R: console.PromptExpression},
@@ -401,7 +401,7 @@ var _ = SIGDescribe("[rfe_id:694][crit:medium][vendor:cnv-qe@redhat.com][level:c
 				&expect.BExp{R: "nameserver 4.2.2.1"},
 				&expect.BSnd{S: "\n"},
 				&expect.BExp{R: console.PromptExpression},
-				&expect.BSnd{S: "cat /etc/systemd/resolv.conf\n"},
+				&expect.BSnd{S: "cat /etc/resolv.conf\n"},
 				&expect.BExp{R: "nameserver 1.1.1.1"},
 				&expect.BSnd{S: "\n"},
 				&expect.BExp{R: console.PromptExpression},
