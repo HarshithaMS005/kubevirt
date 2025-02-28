@@ -35,9 +35,8 @@ import (
 	"kubevirt.io/kubevirt/pkg/network/namescheme"
 	"kubevirt.io/kubevirt/pkg/network/vmispec"
 
-	"kubevirt.io/kubevirt/tests/framework/checks"
 	"kubevirt.io/kubevirt/tests/framework/kubevirt"
-	"kubevirt.io/kubevirt/tests/testsuite"
+	"kubevirt.io/kubevirt/tests/libnode"
 )
 
 func VerifyDynamicInterfaceChange(vmi *v1.VirtualMachineInstance, queueCount int32) *v1.VirtualMachineInstance {
@@ -115,7 +114,7 @@ func cleanMACAndIPAddressesFromStatus(status []v1.VirtualMachineInstanceNetworkI
 	for i := range status {
 		status[i].MAC = ""
 		//For s390x, as ipv6.method=auto by default, IP & IPs has value, so setting to zero-value like MAC.
-		if checks.IsS390X(testsuite.Arch) {
+		if libnode.GetArch() == "s390x" {
 			status[i].IP = ""
 			status[i].IPs = nil
 		}
