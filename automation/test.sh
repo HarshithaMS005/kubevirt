@@ -56,10 +56,6 @@ fi
 export KUBEVIRT_DEPLOY_CDI=true
 if [[ $TARGET =~ windows.* ]]; then
   echo "picking the default provider for windows tests"
-elif [[ $TARGET =~ cnao ]]; then
-  export KUBEVIRT_WITH_CNAO=true
-  export KUBEVIRT_PROVIDER=${TARGET/-cnao/}
-  export KUBEVIRT_DEPLOY_CDI=false
 elif [[ $TARGET =~ sig-network ]]; then
   export KUBEVIRT_WITH_MULTUS_V3="${KUBEVIRT_WITH_MULTUS_V3:-true}"
   export KUBEVIRT_WITH_CNAO=true
@@ -416,10 +412,6 @@ if [[ -z ${KUBEVIRT_E2E_FOCUS} && -z ${KUBEVIRT_E2E_SKIP} && -z ${label_filter} 
     label_filter='(Multus,Networking,VMIlifecycle,Expose,Macvtap)'
   elif [[ $TARGET =~ sig-network ]]; then
     label_filter='(sig-network,netCustomBindingPlugins)'
-    # FIXME: https://github.com/kubevirt/kubevirt/issues/9158
-    if [[ $TARGET =~ no-istio ]]; then
-      add_to_label_filter "(!Istio)" "&&"
-    fi
     if [[ $KUBEVIRT_WITH_MULTUS_V3 == "true" ]]; then
       add_to_label_filter "(!in-place-hotplug-NICs)" "&&"
     else
@@ -464,10 +456,6 @@ if [[ -z ${KUBEVIRT_E2E_FOCUS} && -z ${KUBEVIRT_E2E_SKIP} && -z ${label_filter} 
     label_filter='(!(SRIOV,GPU,VGPU))'
   else
     label_filter='(!(Multus,SRIOV,Macvtap,GPU,VGPU,netCustomBindingPlugins))'
-  fi
-
-  if [[ ! $TARGET =~ k8s-1\.3[0-9].* ]]; then
-    add_to_label_filter "(!kubernetes130)" "&&"
   fi
 
   # execute tests labelled as PERIODIC only on periodic test lanes (according to lane name)
@@ -556,7 +544,7 @@ fi
 
 
 # Run functional tests
-FUNC_TEST_ARGS=$ginko_params FUNC_TEST_LABEL_FILTER='--label-filter='${label_filter} make functest
+FUNC_TEST_ARGS=$ginko_params FUNC_TEST_LABEL_FILTER="--label-filter=(!flake-check)&&(${label_filter})" make functest
 
 # Run REST API coverage based on k8s audit log and openapi spec
 if [ -n "$RUN_REST_COVERAGE" ]; then

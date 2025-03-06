@@ -51,13 +51,12 @@ import (
 	"kubevirt.io/kubevirt/tests/libnode"
 	"kubevirt.io/kubevirt/tests/libstorage"
 	"kubevirt.io/kubevirt/tests/libvmifact"
-	"kubevirt.io/kubevirt/tests/util"
 )
 
 const (
 	defaultEventuallyTimeout         = 5 * time.Second
 	defaultEventuallyPollingInterval = 1 * time.Second
-	defaultKubevirtReadyTimeout      = 180 * time.Second
+	defaultKubevirtReadyTimeout      = 5 * time.Minute
 	defaultKWOKNodeCount             = 100
 )
 
@@ -163,31 +162,35 @@ func BeforeTestSuiteSetup(_ []byte) {
 }
 
 func EnsureKubevirtReady() {
-	EnsureKubevirtReadyWithTimeout(defaultKubevirtReadyTimeout)
+	EnsureDefaultKubevirtReadyWithTimeout(defaultKubevirtReadyTimeout)
 }
 
-func EnsureKubevirtReadyWithTimeout(timeout time.Duration) {
+func EnsureDefaultKubevirtReadyWithTimeout(timeout time.Duration) {
+	kv := libkubevirt.GetCurrentKv(kubevirt.Client())
+	EnsureKubevirtReadyWithTimeout(kv, timeout)
+}
+
+func EnsureKubevirtReadyWithTimeout(kv *v1.KubeVirt, timeout time.Duration) {
 	virtClient := kubevirt.Client()
-	kv := libkubevirt.GetCurrentKv(virtClient)
 
 	Eventually(matcher.ThisDeploymentWith(flags.KubeVirtInstallNamespace, "virt-operator"), 180*time.Second, 1*time.Second).
 		Should(matcher.HaveReadyReplicasNumerically(">", 0),
 			"virt-operator deployment is not ready")
 
-	Eventually(func() *v1.KubeVirt {
-		kv, err := virtClient.KubeVirt(kv.Namespace).Get(context.Background(), kv.Name, metav1.GetOptions{})
-		Expect(err).ToNot(HaveOccurred())
-		return kv
+	Eventually(func(g Gomega) *v1.KubeVirt {
+		foundKV, err := virtClient.KubeVirt(kv.Namespace).Get(context.Background(), kv.Name, metav1.GetOptions{})
+		g.Expect(err).ToNot(HaveOccurred())
+		return foundKV
 	}, timeout, 1*time.Second).Should(
 		SatisfyAll(
 			matcher.HaveConditionTrue(v1.KubeVirtConditionAvailable),
 			matcher.HaveConditionFalse(v1.KubeVirtConditionProgressing),
 			matcher.HaveConditionFalse(v1.KubeVirtConditionDegraded),
-			WithTransform(func(kv *v1.KubeVirt) bool {
+			matcher.HaveConditionTrue(v1.KubeVirtConditionCreated),
+			Satisfy(func(kv *v1.KubeVirt) bool {
 				return kv.ObjectMeta.Generation == *kv.Status.ObservedGeneration
-			}, BeTrue()),
+			}),
 		), "One of the Kubevirt control-plane components is not ready.")
-
 }
 
 func shouldAllowEmulation(virtClient kubecli.KubevirtClient) bool {
@@ -326,8 +329,7 @@ func deployOrWipeTestingInfrastrucure(actionOnObject func(unstructured.Unstructu
 	for _, manifest := range manifests {
 		objects := ReadManifestYamlFile(manifest)
 		for _, obj := range objects {
-			err := actionOnObject(obj)
-			util.PanicOnError(err)
+			Expect(actionOnObject(obj)).To(Succeed())
 		}
 	}
 
@@ -349,7 +351,7 @@ func waitForAllDaemonSetsReady(timeout time.Duration) {
 		virtClient := kubevirt.Client()
 
 		dsList, err := virtClient.AppsV1().DaemonSets(k8sv1.NamespaceAll).List(context.Background(), metav1.ListOptions{})
-		util.PanicOnError(err)
+		Expect(err).ToNot(HaveOccurred())
 		for _, ds := range dsList.Items {
 			if ds.Status.DesiredNumberScheduled != ds.Status.NumberReady {
 				dsNotReady = append(dsNotReady, ds.Name)
@@ -367,7 +369,7 @@ func waitForAllPodsReady(timeout time.Duration, listOptions metav1.ListOptions) 
 		virtClient := kubevirt.Client()
 
 		podsList, err := virtClient.CoreV1().Pods(k8sv1.NamespaceAll).List(context.Background(), listOptions)
-		util.PanicOnError(err)
+		Expect(err).ToNot(HaveOccurred())
 		for _, pod := range podsList.Items {
 			for _, status := range pod.Status.ContainerStatuses {
 				if status.State.Terminated != nil {

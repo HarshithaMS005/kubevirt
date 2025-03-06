@@ -64,7 +64,7 @@ import (
 	"kubevirt.io/kubevirt/tests/testsuite"
 )
 
-var _ = VirtctlDescribe("[sig-compute]create vm", decorators.SigCompute, func() {
+var _ = Describe(SIG("[sig-compute]create vm", decorators.SigCompute, func() {
 	const (
 		randNameTail         = 5
 		size                 = "128Mi"
@@ -752,7 +752,7 @@ chpasswd: { expire: False }`
 			},
 		}))
 	})
-})
+}))
 
 func setFlag(flag, parameter string) string {
 	return fmt.Sprintf("--%s=%s", flag, parameter)
@@ -843,7 +843,7 @@ func runSSHCommand(namespace, name, user, keyFile string) {
 		"-t", "-o StrictHostKeyChecking=no",
 		"-t", "-o UserKnownHostsFile=/dev/null",
 		"--command", "true",
-		name,
+		"vm/"+name,
 	)
 	Expect(err).ToNot(HaveOccurred())
 	out, err := cmd.CombinedOutput()

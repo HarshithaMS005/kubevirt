@@ -90,7 +90,7 @@ type addVolumeFunction func(name, namespace, volumeName, claimName string, bus v
 type removeVolumeFunction func(name, namespace, volumeName string, dryRun bool)
 type storageClassFunction func() (string, bool)
 
-var _ = SIGDescribe("Hotplug", func() {
+var _ = Describe(SIG("Hotplug", func() {
 	var err error
 	var virtClient kubecli.KubevirtClient
 
@@ -669,7 +669,7 @@ var _ = SIGDescribe("Hotplug", func() {
 		})
 	})
 
-	Context("WFFC storage", func() {
+	Context("WFFC storage", decorators.RequiresWFFCStorageClass, func() {
 		var (
 			vm *v1.VirtualMachine
 			sc string
@@ -682,7 +682,7 @@ var _ = SIGDescribe("Hotplug", func() {
 			var exists bool
 			sc, exists = libstorage.GetRWOFileSystemStorageClass()
 			if !exists || !libstorage.IsStorageClassBindingModeWaitForFirstConsumer(sc) {
-				Skip("Skip no wffc storage class available")
+				Fail("fail test, no wffc storage class available")
 			}
 			libstorage.CheckNoProvisionerStorageClassPVs(sc, numPVs)
 
@@ -1938,7 +1938,7 @@ var _ = SIGDescribe("Hotplug", func() {
 			verifyVolumeNolongerAccessible(vmi, targets[0])
 		})
 	})
-})
+}))
 
 func verifyVolumeAndDiskVMAdded(virtClient kubecli.KubevirtClient, vm *v1.VirtualMachine, volumeNames ...string) {
 	nameMap := make(map[string]bool)

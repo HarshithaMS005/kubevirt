@@ -989,6 +989,8 @@ const (
 	HypervLabel = "hyperv.node.kubevirt.io/"
 	// This label represents vendor of cpu model on the node
 	CPUModelVendorLabel = "cpu-vendor.node.kubevirt.io/"
+	// This label represents supported machine type on the node
+	SupportedMachineTypeLabel = "machine-type.node.kubevirt.io/"
 
 	VirtIO = "virtio"
 
@@ -1383,6 +1385,15 @@ type VirtualMachineInstanceMigrationList struct {
 type VirtualMachineInstanceMigrationSpec struct {
 	// The name of the VMI to perform the migration on. VMI must exist in the migration objects namespace
 	VMIName string `json:"vmiName,omitempty" valid:"required"`
+
+	// AddedNodeSelector is an additional selector that can be used to
+	// complement a NodeSelector or NodeAffinity as set on the VM
+	// to restrict the set of allowed target nodes for a migration.
+	// In case of key collisions, values set on the VM objects
+	// are going to be preserved to ensure that addedNodeSelector
+	// can only restrict but not bypass constraints already set on the VM object.
+	// +optional
+	AddedNodeSelector map[string]string `json:"addedNodeSelector,omitempty"`
 }
 
 // VirtualMachineInstanceMigrationPhaseTransitionTimestamp gives a timestamp in relation to when a phase is set on a vmi
@@ -2312,6 +2323,15 @@ type MigrateOptions struct {
 	// +optional
 	// +listType=atomic
 	DryRun []string `json:"dryRun,omitempty" protobuf:"bytes,1,rep,name=dryRun"`
+
+	// AddedNodeSelector is an additional selector that can be used to
+	// complement a NodeSelector or NodeAffinity as set on the VM
+	// to restrict the set of allowed target nodes for a migration.
+	// In case of key collisions, values set on the VM objects
+	// are going to be preserved to ensure that addedNodeSelector
+	// can only restrict but not bypass constraints already set on the VM object.
+	// +optional
+	AddedNodeSelector map[string]string `json:"addedNodeSelector,omitempty"`
 }
 
 // VirtualMachineInstanceGuestAgentInfo represents information from the installed guest agent

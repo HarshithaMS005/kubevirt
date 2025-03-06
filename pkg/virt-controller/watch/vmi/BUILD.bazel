@@ -2,16 +2,22 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
     name = "go_default_library",
-    srcs = ["vmi.go"],
+    srcs = [
+        "datavolumes.go",
+        "vmi.go",
+        "volume-hotplug.go",
+    ],
     importpath = "kubevirt.io/kubevirt/pkg/virt-controller/watch/vmi",
     visibility = ["//visibility:public"],
     deps = [
         "//pkg/apimachinery/patch:go_default_library",
         "//pkg/controller:go_default_library",
+        "//pkg/pointer:go_default_library",
         "//pkg/storage/backend-storage:go_default_library",
         "//pkg/storage/types:go_default_library",
         "//pkg/util:go_default_library",
         "//pkg/util/hardware:go_default_library",
+        "//pkg/util/migrations:go_default_library",
         "//pkg/util/trace:go_default_library",
         "//pkg/virt-config:go_default_library",
         "//pkg/virt-controller/services:go_default_library",

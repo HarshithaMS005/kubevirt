@@ -57,7 +57,6 @@ import (
 	"kubevirt.io/client-go/log"
 
 	"kubevirt.io/kubevirt/pkg/config"
-	containerdisk "kubevirt.io/kubevirt/pkg/container-disk"
 	"kubevirt.io/kubevirt/pkg/controller"
 	diskutils "kubevirt.io/kubevirt/pkg/ephemeral-disk-utils"
 	"kubevirt.io/kubevirt/pkg/executor"
@@ -96,7 +95,7 @@ import (
 )
 
 type netconf interface {
-	Setup(vmi *v1.VirtualMachineInstance, networks []v1.Network, launcherPid int, preSetup func() error) error
+	Setup(vmi *v1.VirtualMachineInstance, networks []v1.Network, launcherPid int) error
 	Teardown(vmi *v1.VirtualMachineInstance) error
 }
 
@@ -553,35 +552,6 @@ func (c *VirtualMachineController) teardownNetwork(vmi *v1.VirtualMachineInstanc
 		log.Log.Reason(err).Errorf("failed to delete VMI Network cache files: %s", err.Error())
 	}
 	c.netStat.Teardown(vmi)
-}
-
-func (c *VirtualMachineController) setupNetwork(vmi *v1.VirtualMachineInstance, networks []v1.Network) error {
-	if len(networks) == 0 {
-		return nil
-	}
-
-	isolationRes, err := c.podIsolationDetector.Detect(vmi)
-	if err != nil {
-		return fmt.Errorf(failedDetectIsolationFmt, err)
-	}
-	rootMount, err := isolationRes.MountRoot()
-	if err != nil {
-		return err
-	}
-
-	return c.netConf.Setup(vmi, networks, isolationRes.Pid(), func() error {
-		if virtutil.WantVirtioNetDevice(vmi) {
-			if err := c.claimDeviceOwnership(rootMount, "vhost-net"); err != nil {
-				return neterrors.CreateCriticalNetworkError(fmt.Errorf("failed to set up vhost-net device, %s", err))
-			}
-		}
-		if virtutil.NeedTunDevice(vmi) {
-			if err := c.claimDeviceOwnership(rootMount, "/net/tun"); err != nil {
-				return neterrors.CreateCriticalNetworkError(fmt.Errorf("failed to set up tun device, %s", err))
-			}
-		}
-		return nil
-	})
 }
 
 func domainPausedFailedPostCopy(domain *api.Domain) bool {
@@ -2097,7 +2067,7 @@ func (c *VirtualMachineController) execute(key string) error {
 	// As a last effort, if the UID still can't be determined attempt
 	// to retrieve it from the ghost record
 	if string(vmi.UID) == "" {
-		uid := virtcache.LastKnownUIDFromGhostRecordCache(key)
+		uid := virtcache.GhostRecordGlobalStore.LastKnownUID(key)
 		if uid != "" {
 			log.Log.Object(vmi).V(3).Infof("ghost record cache provided %s as UID", uid)
 			vmi.UID = uid
@@ -2210,7 +2180,7 @@ func (c *VirtualMachineController) closeLauncherClient(vmi *v1.VirtualMachineIns
 		close(clientInfo.DomainPipeStopChan)
 	}
 
-	virtcache.DeleteGhostRecord(vmi.Namespace, vmi.Name)
+	virtcache.GhostRecordGlobalStore.Delete(vmi.Namespace, vmi.Name)
 	c.launcherClients.Delete(vmi.UID)
 	return nil
 }
@@ -2282,7 +2252,7 @@ func (c *VirtualMachineController) getLauncherClient(vmi *v1.VirtualMachineInsta
 		return nil, err
 	}
 
-	err = virtcache.AddGhostRecord(vmi.Namespace, vmi.Name, socketFile, vmi.UID)
+	err = virtcache.GhostRecordGlobalStore.Add(vmi.Namespace, vmi.Name, socketFile, vmi.UID)
 	if err != nil {
 		return nil, err
 	}
@@ -2433,7 +2403,7 @@ func (c *VirtualMachineController) hasStaleClientConnections(vmi *v1.VirtualMach
 	}
 
 	// no connection, but ghost file exists.
-	if virtcache.HasGhostRecord(vmi.Namespace, vmi.Name) {
+	if virtcache.GhostRecordGlobalStore.Exists(vmi.Namespace, vmi.Name) {
 		return true
 	}
 
@@ -2780,22 +2750,8 @@ func (c *VirtualMachineController) vmUpdateHelperMigrationTarget(origVMI *v1.Vir
 		return nil
 	}
 
-	// Verify container disks checksum
-	err = container_disk.VerifyChecksums(c.containerDiskMounter, vmi)
-	switch {
-	case goerror.Is(err, container_disk.ErrChecksumMissing):
-		// wait for checksum to be computed by the source virt-handler
-		return err
-	case goerror.Is(err, container_disk.ErrChecksumMismatch):
-		log.Log.Object(vmi).Infof("Containerdisk checksum mismatch, terminating target pod: %s", err)
-		c.recorder.Event(vmi, k8sv1.EventTypeNormal, "ContainerDiskFailedChecksum", "Aborting migration as the source and target containerdisks/kernelboot do not match")
-		return client.SignalTargetPodCleanup(vmi)
-	case err != nil:
-		return err
-	}
-
 	// Mount container disks
-	disksInfo, err := c.containerDiskMounter.MountAndVerify(vmi)
+	err = c.containerDiskMounter.MountAndVerify(vmi)
 	if err != nil {
 		return err
 	}
@@ -2811,15 +2767,15 @@ func (c *VirtualMachineController) vmUpdateHelperMigrationTarget(origVMI *v1.Vir
 		}
 	}
 
-	// configure network inside virt-launcher compute container
-	if err := c.setupNetwork(vmi, netsetup.FilterNetsForMigrationTarget(vmi)); err != nil {
-		return fmt.Errorf("failed to configure vmi network for migration target: %w", err)
-	}
-
 	isolationRes, err := c.podIsolationDetector.Detect(vmi)
 	if err != nil {
 		return fmt.Errorf(failedDetectIsolationFmt, err)
 	}
+
+	if err := c.netConf.Setup(vmi, netsetup.FilterNetsForMigrationTarget(vmi), isolationRes.Pid()); err != nil {
+		return fmt.Errorf("failed to configure vmi network for migration target: %w", err)
+	}
+
 	virtLauncherRootMount, err := isolationRes.MountRoot()
 	if err != nil {
 		return err
@@ -2851,7 +2807,7 @@ func (c *VirtualMachineController) vmUpdateHelperMigrationTarget(origVMI *v1.Vir
 		}
 	}
 
-	options := virtualMachineOptions(nil, 0, nil, c.capabilities, disksInfo, c.clusterConfig)
+	options := virtualMachineOptions(nil, 0, nil, c.capabilities, c.clusterConfig)
 	options.InterfaceDomainAttachment = domainspec.DomainAttachmentByInterfaceName(vmi.Spec.Domain.Devices.Interfaces, c.clusterConfig.GetNetworkBindings())
 
 	if err := client.SyncMigrationTarget(vmi, options); err != nil {
@@ -3001,8 +2957,7 @@ func (c *VirtualMachineController) vmUpdateHelperDefault(origVMI *v1.VirtualMach
 	}
 
 	var errorTolerantFeaturesError []error
-	disksInfo := map[string]*containerdisk.DiskInfo{}
-	readyToProceed, err := c.handleVMIState(vmi, cgroupManager, &disksInfo, &errorTolerantFeaturesError)
+	readyToProceed, err := c.handleVMIState(vmi, cgroupManager, &errorTolerantFeaturesError)
 	if err != nil {
 		return err
 	}
@@ -3012,7 +2967,7 @@ func (c *VirtualMachineController) vmUpdateHelperDefault(origVMI *v1.VirtualMach
 	}
 
 	// Synchronize the VirtualMachineInstance state
-	err = c.syncVirtualMachine(client, vmi, preallocatedVolumes, disksInfo)
+	err = c.syncVirtualMachine(client, vmi, preallocatedVolumes)
 	if err != nil {
 		return err
 	}
@@ -3027,11 +2982,11 @@ func (c *VirtualMachineController) vmUpdateHelperDefault(origVMI *v1.VirtualMach
 }
 
 // handleVMIState: Decides whether to call handleRunningVMI or handleStartingVMI based on the VMI's state.
-func (c *VirtualMachineController) handleVMIState(vmi *v1.VirtualMachineInstance, cgroupManager cgroup.Manager, disksInfo *map[string]*containerdisk.DiskInfo, errorTolerantFeaturesError *[]error) (bool, error) {
+func (c *VirtualMachineController) handleVMIState(vmi *v1.VirtualMachineInstance, cgroupManager cgroup.Manager, errorTolerantFeaturesError *[]error) (bool, error) {
 	if vmi.IsRunning() {
 		return true, c.handleRunningVMI(vmi, cgroupManager, errorTolerantFeaturesError)
 	} else if !vmi.IsFinal() {
-		return c.handleStartingVMI(vmi, cgroupManager, disksInfo)
+		return c.handleStartingVMI(vmi, cgroupManager)
 	}
 	return true, nil
 }
@@ -3059,7 +3014,7 @@ func (c *VirtualMachineController) handleRunningVMI(vmi *v1.VirtualMachineInstan
 		return err
 	}
 
-	if err := c.setupNetwork(vmi, netsetup.FilterNetsForLiveUpdate(vmi)); err != nil {
+	if err := c.netConf.Setup(vmi, netsetup.FilterNetsForLiveUpdate(vmi), isolationRes.Pid()); err != nil {
 		log.Log.Object(vmi).Error(err.Error())
 		c.recorder.Event(vmi, k8sv1.EventTypeWarning, "NicHotplug", err.Error())
 		*errorTolerantFeaturesError = append(*errorTolerantFeaturesError, err)
@@ -3072,7 +3027,6 @@ func (c *VirtualMachineController) handleRunningVMI(vmi *v1.VirtualMachineInstan
 func (c *VirtualMachineController) handleStartingVMI(
 	vmi *v1.VirtualMachineInstance,
 	cgroupManager cgroup.Manager,
-	disksInfo *map[string]*containerdisk.DiskInfo,
 ) (bool, error) {
 	// give containerDisks some time to become ready before throwing errors on retries
 	info := c.getLauncherClientInfo(vmi)
@@ -3085,7 +3039,7 @@ func (c *VirtualMachineController) handleStartingVMI(
 	}
 
 	var err error
-	*disksInfo, err = c.containerDiskMounter.MountAndVerify(vmi)
+	err = c.containerDiskMounter.MountAndVerify(vmi)
 	if err != nil {
 		return false, err
 	}
@@ -3094,13 +3048,13 @@ func (c *VirtualMachineController) handleStartingVMI(
 		return false, err
 	}
 
-	if err := c.setupNetwork(vmi, netsetup.FilterNetsForVMStartup(vmi)); err != nil {
-		return false, fmt.Errorf("failed to configure vmi network: %w", err)
-	}
-
 	isolationRes, err := c.podIsolationDetector.Detect(vmi)
 	if err != nil {
 		return false, fmt.Errorf(failedDetectIsolationFmt, err)
+	}
+
+	if err := c.netConf.Setup(vmi, netsetup.FilterNetsForVMStartup(vmi), isolationRes.Pid()); err != nil {
+		return false, fmt.Errorf("failed to configure vmi network: %w", err)
 	}
 
 	if err := c.setupDevicesOwnerships(vmi, isolationRes); err != nil {
@@ -3212,11 +3166,11 @@ func (c *VirtualMachineController) configureVirtioFS(vmi *v1.VirtualMachineInsta
 	return nil
 }
 
-func (c *VirtualMachineController) syncVirtualMachine(client cmdclient.LauncherClient, vmi *v1.VirtualMachineInstance, preallocatedVolumes []string, disksInfo map[string]*containerdisk.DiskInfo) error {
+func (c *VirtualMachineController) syncVirtualMachine(client cmdclient.LauncherClient, vmi *v1.VirtualMachineInstance, preallocatedVolumes []string) error {
 	smbios := c.clusterConfig.GetSMBIOS()
 	period := c.clusterConfig.GetMemBalloonStatsPeriod()
 
-	options := virtualMachineOptions(smbios, period, preallocatedVolumes, c.capabilities, disksInfo, c.clusterConfig)
+	options := virtualMachineOptions(smbios, period, preallocatedVolumes, c.capabilities, c.clusterConfig)
 	options.InterfaceDomainAttachment = domainspec.DomainAttachmentByInterfaceName(vmi.Spec.Domain.Devices.Interfaces, c.clusterConfig.GetNetworkBindings())
 
 	err := client.SyncVirtualMachine(vmi, options)
@@ -3596,7 +3550,7 @@ func (c *VirtualMachineController) reportDedicatedCPUSetForMigratingVMI(vmi *v1.
 }
 
 func (c *VirtualMachineController) reportTargetTopologyForMigratingVMI(vmi *v1.VirtualMachineInstance) error {
-	options := virtualMachineOptions(nil, 0, nil, c.capabilities, map[string]*containerdisk.DiskInfo{}, c.clusterConfig)
+	options := virtualMachineOptions(nil, 0, nil, c.capabilities, c.clusterConfig)
 	topology, err := json.Marshal(options.Topology)
 	if err != nil {
 		return err
@@ -3669,7 +3623,6 @@ func (c *VirtualMachineController) hotplugCPU(vmi *v1.VirtualMachineInstance, cl
 		0,
 		nil,
 		c.capabilities,
-		nil,
 		c.clusterConfig)
 
 	if err := client.SyncVirtualMachineCPUs(vmi, options); err != nil {
@@ -3720,7 +3673,7 @@ func (c *VirtualMachineController) hotplugMemory(vmi *v1.VirtualMachineInstance,
 		return fmt.Errorf("amount of requested guest memory (%s) exceeds the launcher memory request (%s)", vmi.Spec.Domain.Memory.Guest.String(), podMemReqStr)
 	}
 
-	options := virtualMachineOptions(nil, 0, nil, c.capabilities, nil, c.clusterConfig)
+	options := virtualMachineOptions(nil, 0, nil, c.capabilities, c.clusterConfig)
 
 	if err := client.SyncVirtualMachineMemory(vmi, options); err != nil {
 		// mark hotplug as failed

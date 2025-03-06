@@ -24,12 +24,15 @@ import (
 	"fmt"
 	"time"
 
+	"k8s.io/apimachinery/pkg/types"
+
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "kubevirt.io/api/core/v1"
 
+	"kubevirt.io/kubevirt/pkg/apimachinery/patch"
 	"kubevirt.io/kubevirt/pkg/libvmi"
 	"kubevirt.io/kubevirt/tests/console"
 	"kubevirt.io/kubevirt/tests/framework/kubevirt"
@@ -39,8 +42,7 @@ import (
 	"kubevirt.io/kubevirt/tests/testsuite"
 )
 
-var _ = SIGDescribe("interface state up/down", func() {
-
+var _ = Describe(SIG("interface state up/down", func() {
 	It("status and guest should show correct iface state", func() {
 		const (
 			primaryLogicalNetName    = "default"
@@ -83,7 +85,17 @@ var _ = SIGDescribe("interface state up/down", func() {
 
 		vm := libvmi.NewVirtualMachine(vmi, libvmi.WithRunStrategy(v1.RunStrategyAlways))
 		vm, err = kubevirt.Client().VirtualMachine(testNamespace).Create(context.Background(), vm, metav1.CreateOptions{})
-		Eventually(matcher.ThisVM(vm)).WithTimeout(6 * time.Minute).WithPolling(3 * time.Second).Should(matcher.HaveConditionTrue(v1.VirtualMachineInstanceAgentConnected))
+		Expect(err).NotTo(HaveOccurred())
+
+		const (
+			waitForGAConnectedTimout        = 6 * time.Minute
+			waitForGAConnectedRetryInterval = 3 * time.Second
+		)
+
+		Eventually(matcher.ThisVM(vm)).
+			WithTimeout(waitForGAConnectedTimout).
+			WithPolling(waitForGAConnectedRetryInterval).
+			Should(matcher.HaveConditionTrue(v1.VirtualMachineInstanceAgentConnected))
 		vmi, err = kubevirt.Client().VirtualMachineInstance(testNamespace).Get(context.Background(), vm.Name, metav1.GetOptions{})
 		Expect(err).ToNot(HaveOccurred())
 		Expect(console.LoginToFedora(vmi)).To(Succeed())
@@ -93,21 +105,41 @@ var _ = SIGDescribe("interface state up/down", func() {
 			{Name: secondary2LogicalNetName, LinkState: string(v1.InterfaceStateLinkDown)},
 		}
 
+		const waitForExpectedIfaceStatusesTimeout = 60 * time.Second
 		Eventually(func() ([]v1.VirtualMachineInstanceNetworkInterface, error) {
-			vmi, err := kubevirt.Client().VirtualMachineInstance(vm.Namespace).Get(context.Background(), vm.Name, metav1.GetOptions{})
+			fetchedVMI, err := kubevirt.Client().VirtualMachineInstance(vm.Namespace).Get(context.Background(), vm.Name, metav1.GetOptions{})
 			if err != nil {
 				return nil, err
 			}
-			return normalizeIfaceStatuses(vmi.Status.Interfaces), nil
-		}).WithTimeout(60 * time.Second).Should(ConsistOf(expectedIfaceStatuses))
+			return normalizeIfaceStatuses(fetchedVMI.Status.Interfaces), nil
+		}).WithTimeout(waitForExpectedIfaceStatusesTimeout).Should(ConsistOf(expectedIfaceStatuses))
 
 		timeout := 5 * time.Second
 		Expect(console.RunCommand(vmi, assertLinkStateCmd(mac1.String(), v1.InterfaceStateLinkUp), timeout)).To(Succeed())
 		Expect(console.RunCommand(vmi, assertLinkStateCmd(mac2.String(), v1.InterfaceStateLinkDown), timeout)).To(Succeed())
 
-	})
+		By("flipping the state of both interfaces")
 
-})
+		Expect(patchToggleVMInterfacesStates(vm)).To(Succeed())
+
+		expectedIfaceStatuses = []v1.VirtualMachineInstanceNetworkInterface{
+			{Name: primaryLogicalNetName, LinkState: string(v1.InterfaceStateLinkDown)},
+			{Name: secondary2LogicalNetName, LinkState: string(v1.InterfaceStateLinkUp)},
+		}
+
+		Eventually(func() ([]v1.VirtualMachineInstanceNetworkInterface, error) {
+			fetchedVMI, err := kubevirt.Client().VirtualMachineInstance(vm.Namespace).Get(context.Background(), vm.Name, metav1.GetOptions{})
+			if err != nil {
+				return nil, err
+			}
+			return normalizeIfaceStatuses(fetchedVMI.Status.Interfaces), nil
+		}).WithTimeout(waitForExpectedIfaceStatusesTimeout).Should(ConsistOf(expectedIfaceStatuses))
+
+		timeout = 30 * time.Second
+		Expect(console.RunCommand(vmi, assertLinkStateCmd(mac1.String(), v1.InterfaceStateLinkDown), timeout)).To(Succeed())
+		Expect(console.RunCommand(vmi, assertLinkStateCmd(mac2.String(), v1.InterfaceStateLinkUp), timeout)).To(Succeed())
+	})
+}))
 
 func normalizeIfaceStatuses(ifaceStatuses []v1.VirtualMachineInstanceNetworkInterface) []v1.VirtualMachineInstanceNetworkInterface {
 	var result []v1.VirtualMachineInstanceNetworkInterface
@@ -131,6 +163,41 @@ func assertLinkStateCmd(mac string, desiredLinkState v1.InterfaceState) string {
 		linkStateRegex = linkStateUPRegex
 	case v1.InterfaceStateLinkDown:
 		linkStateRegex = linkStateDOWNRegex
+	case v1.InterfaceStateAbsent:
+		// noop
 	}
+
 	return fmt.Sprintf(ipLinkTemplate, mac, linkStateRegex)
+}
+
+func patchToggleVMInterfacesStates(vm *v1.VirtualMachine) error {
+	vmIfaces := vm.Spec.Template.Spec.Domain.Devices.Interfaces
+
+	patchOptions := make([]patch.PatchOption, len(vmIfaces))
+
+	for i, iface := range vmIfaces {
+		patchOptions[i] = patch.WithReplace(
+			fmt.Sprintf("/spec/template/spec/domain/devices/interfaces/%d/state", i),
+			flipState(iface.State))
+	}
+	patchData, err := patch.New(patchOptions...).GeneratePayload()
+	if err != nil {
+		return err
+	}
+
+	_, err = kubevirt.Client().VirtualMachine(vm.Namespace).Patch(
+		context.Background(),
+		vm.Name,
+		types.JSONPatchType,
+		patchData,
+		metav1.PatchOptions{},
+	)
+	return err
+}
+
+func flipState(curState v1.InterfaceState) v1.InterfaceState {
+	if curState == v1.InterfaceStateLinkDown {
+		return v1.InterfaceStateLinkUp
+	}
+	return v1.InterfaceStateLinkDown
 }

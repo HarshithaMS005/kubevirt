@@ -59,6 +59,7 @@ var (
 	MigrationBasedHotplugNICs            = Label("migration-based-hotplug-NICs")
 	NetCustomBindingPlugins              = Label("netCustomBindingPlugins")
 	RequiresTwoSchedulableNodes          = Label("requires-two-schedulable-nodes")
+	RequiresThreeSchedulableNodes        = Label("requires-three-schedulable-nodes")
 	VMLiveUpdateRolloutStrategy          = Label("VMLiveUpdateRolloutStrategy")
 	USB                                  = Label("USB")
 	RequiresTwoWorkerNodesWithCPUManager = Label("requires-two-worker-nodes-with-cpu-manager")
@@ -71,6 +72,8 @@ var (
 
 	// RequiresSnapshotStorageClass requires a storage class with support for snapshots
 	RequiresSnapshotStorageClass = Label("RequiresSnapshotStorageClass")
+	// RequiresWFFCStorageClass requires a storage class with support for WFFC bindingMode
+	RequiresWFFCStorageClass = Label("RequiresWFFCStorageClass")
 	// RequiresNoSnapshotStorageClass requires a storage class without support for snapshots
 	RequiresNoSnapshotStorageClass = Label("RequiresNoSnapshotStorageClass")
 	// RequiresRWXBlock requires a storage class with ReadWriteMany Block support
@@ -87,10 +90,10 @@ var (
 	// RequiresVolumeExpansion requires a storage class with volume expansion support
 	RequiresVolumeExpansion = Label("RequiresVolumeExpansion")
 
-	/* Kubernetes versions */
+	/* Provisioner */
 
-	// Kubernetes versions
-	Kubernetes130 = Label("kubernetes130")
+	// RequiresSizeRoundUp requires a provisioner that rounds up the size of the volume
+	RequiresSizeRoundUp = Label("RequiresSizeRoundUp")
 
 	/* architecture working groups */
 
@@ -103,4 +106,6 @@ var (
 	// NoFlakeCheck decorates tests that are not compatible with the check-tests-for-flakes test lane.
 	// This should only be used for legitimate purposes, like on tests that have a flake-checker-friendly clone.
 	NoFlakeCheck = Label("no-flake-check")
+	// FlakeCheck decorates tests that are dedicated to the check-tests-for-flakes test lane.
+	FlakeCheck = Label("flake-check")
 )

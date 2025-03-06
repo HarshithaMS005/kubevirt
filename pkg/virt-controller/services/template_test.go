@@ -492,7 +492,9 @@ var _ = Describe("Template", func() {
 					"--container-disk-dir", "/var/run/kubevirt/container-disks",
 					"--grace-period-seconds", "45",
 					"--hook-sidecars", "1",
-					"--ovmf-path", ovmfPath}))
+					"--ovmf-path", ovmfPath,
+					"--disk-memory-limit", strconv.Itoa(virtconfig.DefaultDiskVerificationMemoryLimitBytes),
+				}))
 				Expect(pod.Spec.Containers[1].Name).To(Equal("hook-sidecar-0"))
 				Expect(pod.Spec.Containers[1].Image).To(Equal("some-image:v1"))
 				Expect(pod.Spec.Containers[1].ImagePullPolicy).To(Equal(k8sv1.PullPolicy("IfNotPresent")))
@@ -1069,7 +1071,9 @@ var _ = Describe("Template", func() {
 					"--container-disk-dir", "/var/run/kubevirt/container-disks",
 					"--grace-period-seconds", "45",
 					"--hook-sidecars", "1",
-					"--ovmf-path", ovmfPath}))
+					"--ovmf-path", ovmfPath,
+					"--disk-memory-limit", strconv.Itoa(virtconfig.DefaultDiskVerificationMemoryLimitBytes),
+				}))
 				Expect(pod.Spec.Containers[1].Name).To(Equal("hook-sidecar-0"))
 				Expect(pod.Spec.Containers[1].Image).To(Equal("some-image:v1"))
 				Expect(pod.Spec.Containers[1].ImagePullPolicy).To(Equal(k8sv1.PullPolicy("IfNotPresent")))
@@ -1138,6 +1142,37 @@ var _ = Describe("Template", func() {
 					Expect(pod.Spec.NodeSelector).Should(HaveKeyWithValue(featureLabel, "true"))
 				}
 			})
+
+			DescribeTable("should add node selector for machine type", func(specMachineType, statusMachineType, expectedMachineType string) {
+				config, kvStore, svc = configFactory(defaultArch)
+				vmi := v1.VirtualMachineInstance{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "testvmi",
+						Namespace: "default",
+						UID:       "1234",
+					},
+					Spec: v1.VirtualMachineInstanceSpec{
+						Domain: v1.DomainSpec{
+							Machine: &v1.Machine{Type: specMachineType},
+						},
+					},
+				}
+
+				if statusMachineType != "" {
+					vmi.Status = v1.VirtualMachineInstanceStatus{
+						Machine: &v1.Machine{Type: statusMachineType},
+					}
+				}
+
+				pod, err := svc.RenderLaunchManifest(&vmi)
+				Expect(err).ToNot(HaveOccurred())
+
+				machineTypeLabelKey := v1.SupportedMachineTypeLabel + expectedMachineType
+				Expect(pod.Spec.NodeSelector).Should(HaveKeyWithValue(machineTypeLabelKey, "true"))
+			},
+				Entry("when only spec machine type is provided", "specMachineType", "", "specMachineType"),
+				Entry("when both spec and status machine types are provided, status takes precedence", "specMachineType", "statusMachineType", "statusMachineType"),
+			)
 
 			It("should add node selectors from kubevirt-config configMap", func() {
 				config, kvStore, svc = configFactory(defaultArch)

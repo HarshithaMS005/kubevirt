@@ -35,7 +35,7 @@ func RenderPrHelperContainer(image string, pullPolicy corev1.PullPolicy) corev1.
 		Name:            PrHelperName,
 		Image:           image,
 		ImagePullPolicy: pullPolicy,
-		Command:         []string{"/usr/bin/qemu-pr-helper"},
+		Command:         []string{"/entrypoint.sh"},
 		Args: []string{
 			"-k", reservation.GetPrHelperSocketPath(),
 		},
@@ -330,10 +330,8 @@ func NewHandlerDaemonSet(namespace, repository, imagePrefix, version, launcherVe
 
 	container.Resources = corev1.ResourceRequirements{
 		Requests: corev1.ResourceList{
-			corev1.ResourceCPU: resource.MustParse("10m"),
-			// 325Mi - base memory request
-			// +32Mi - to account for the buffer used to verify containerdisk checksums
-			corev1.ResourceMemory: resource.MustParse("357Mi"),
+			corev1.ResourceCPU:    resource.MustParse("10m"),
+			corev1.ResourceMemory: resource.MustParse("325Mi"),
 		},
 	}
 	if prHelperImage == "" {
