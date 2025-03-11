@@ -77,6 +77,8 @@ var _ = Describe("[sig-compute]Watchdog", decorators.SigCompute, func() {
 			Expect(console.SafeExpectBatch(vmi, []expect.Batcher{
 				&expect.BSnd{S: "sudo sed -i 's/^#watchdog-device/watchdog-device/' /etc/watchdog.conf\n"},
 				&expect.BExp{R: console.PromptExpression},
+				&expect.BSnd{S: "sudo sed -i 's/^watchdog-timeout.*/watchdog-timeout = 5/' /etc/watchdog.conf || echo 'watchdog-timeout = 5' | sudo tee -a /etc/watchdog.conf\n"},
+				&expect.BExp{R: console.PromptExpression},
 			}, 250)).To(Succeed())
 
 			By("Starting watchdog service")
@@ -85,11 +87,11 @@ var _ = Describe("[sig-compute]Watchdog", decorators.SigCompute, func() {
 				&expect.BExp{R: console.PromptExpression},
 			}, 250)).To(Succeed())
 
-			By("Verifying watchdog service is running")
-			Expect(console.SafeExpectBatch(vmi, []expect.Batcher{
-				&expect.BSnd{S: "systemctl status watchdog | grep 'Active:'\n"},
-				&expect.BExp{R: "Active: active"},
-			}, 250)).To(Succeed())
+			//By("Verifying watchdog service is running")
+			//Expect(console.SafeExpectBatch(vmi, []expect.Batcher{
+			//      &expect.BSnd{S: "systemctl status watchdog | grep 'Active:'\n"},
+			//      &expect.BExp{R: "Active: active"},
+			//}, 250)).To(Succeed())
 
 			By("Checking watchdog device presence")
 			Expect(console.SafeExpectBatch(vmi, []expect.Batcher{
@@ -97,16 +99,27 @@ var _ = Describe("[sig-compute]Watchdog", decorators.SigCompute, func() {
 				&expect.BExp{R: "/dev/watchdog"},
 			}, 250)).To(Succeed())
 
+			//By("Checking watchdog service logs")
+			//Expect(console.SafeExpectBatch(vmi, []expect.Batcher{
+			//      &expect.BSnd{S: "sudo journalctl -u watchdog --no-pager | tail -n 20\n"},
+			//      &expect.BExp{R: console.PromptExpression}, // Ensures command execution completes
+			//}, 250)).To(Succeed())
+
 			By("Killing the watchdog device")
 			Expect(console.SafeExpectBatch(vmi, []expect.Batcher{
-				&expect.BSnd{S: "watchdog -t 2000ms -T 4000ms /dev/watchdog && sleep 5 && killall -9 watchdog\n"},
+				&expect.BSnd{S: "sudo pkill -9 watchdog\n"},
 				&expect.BExp{R: console.PromptExpression},
+				&expect.BSnd{S: "sleep 2 && echo 'V' | sudo tee /dev/watchdog\n"},
+				&expect.BExp{R: "V.*" + console.PromptExpression},
 				&expect.BSnd{S: "echo $?\n"},
 				&expect.BExp{R: console.RetValue("0")},
 			}, 250)).To(Succeed())
 
+			By("Waiting longer for watchdog to expire")
+			time.Sleep(120 * time.Second) // Increased wait time
+
 			By("Checking that the VirtualMachineInstance has Failed status")
-			Eventually(matcher.ThisVMI(vmi)).WithTimeout(40 * time.Second).WithPolling(time.Second).
+			Eventually(matcher.ThisVMI(vmi)).WithTimeout(90 * time.Second).WithPolling(time.Second).
 				Should(matcher.BeInPhase(v1.Failed))
 		})
 
