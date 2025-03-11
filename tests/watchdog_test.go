@@ -109,10 +109,6 @@ var _ = Describe("[sig-compute]Watchdog", decorators.SigCompute, func() {
 			Expect(console.SafeExpectBatch(vmi, []expect.Batcher{
 				&expect.BSnd{S: "sudo pkill -9 watchdog\n"},
 				&expect.BExp{R: console.PromptExpression},
-				&expect.BSnd{S: "sleep 2 && echo 'V' | sudo tee /dev/watchdog\n"},
-				&expect.BExp{R: "V.*" + console.PromptExpression},
-				&expect.BSnd{S: "echo $?\n"},
-				&expect.BExp{R: console.RetValue("0")},
 			}, 250)).To(Succeed())
 
 			By("Waiting longer for watchdog to expire")
