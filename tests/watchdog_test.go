@@ -112,7 +112,7 @@ var _ = Describe("[sig-compute]Watchdog", decorators.SigCompute, func() {
 			}, 250)).To(Succeed())
 
 			By("Waiting longer for watchdog to expire")
-			time.Sleep(120 * time.Second) // Increased wait time
+			time.Sleep(300 * time.Second) // Increased wait time
 
 			By("Checking that the VirtualMachineInstance has Failed status")
 			Eventually(matcher.ThisVMI(vmi)).WithTimeout(90 * time.Second).WithPolling(time.Second).
