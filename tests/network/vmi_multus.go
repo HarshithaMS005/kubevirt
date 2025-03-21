@@ -534,7 +534,7 @@ var _ = SIGDescribe("[Serial]Multus", Serial, decorators.Multus, func() {
 				Expect(console.RunCommand(vmiOne, fmt.Sprintf("ip addr show eth1 | grep %s\n", interfacesByName[linuxBridgeIfaceName].MAC), timeout)).To(Succeed())
 			})
 
-			It("should have the correct MTU on the secondary interface with no dhcp server", func() {
+			It("[test_id:xyz] should have the correct MTU on the secondary interface with no dhcp server", func() {
 				getPodInterfaceMtu := func(vmi *v1.VirtualMachineInstance) string {
 					vmiPod, err := libpod.GetPodByVirtualMachineInstance(vmi, vmi.Namespace)
 					Expect(err).NotTo(HaveOccurred())
