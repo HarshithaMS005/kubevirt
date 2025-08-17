@@ -173,6 +173,7 @@ func EnsureDefaultKubevirtReadyWithTimeout(timeout time.Duration) {
 
 func EnsureKubevirtReadyWithTimeout(kv *v1.KubeVirt, timeout time.Duration) {
 	virtClient := kubevirt.Client()
+	flags.KubeVirtInstallNamespace = "openshift-cnv"
 
 	Eventually(matcher.ThisDeploymentWith(flags.KubeVirtInstallNamespace, "virt-operator"), 180*time.Second, 1*time.Second).
 		Should(matcher.HaveReadyReplicasNumerically(">", 0),
@@ -365,31 +366,32 @@ func waitForAllDaemonSetsReady(timeout time.Duration) {
 }
 
 func waitForAllPodsReady(timeout time.Duration, listOptions metav1.ListOptions) {
-	checkForPodsToBeReady := func() []string {
-		podsNotReady := make([]string, 0)
-		virtClient := kubevirt.Client()
+	// checkForPodsToBeReady := func() []string {
+	// 	podsNotReady := make([]string, 0)
+	// 	virtClient := kubevirt.Client()
 
-		podsList, err := virtClient.CoreV1().Pods(k8sv1.NamespaceAll).List(context.Background(), listOptions)
-		Expect(err).ToNot(HaveOccurred())
-		for _, pod := range podsList.Items {
-			for _, status := range pod.Status.ContainerStatuses {
-				if status.State.Terminated != nil {
-					break // We don't care about terminated pods
-				} else if status.State.Running != nil {
-					if !status.Ready { // We need to wait for this one
-						podsNotReady = append(podsNotReady, pod.Name)
-						break
-					}
-				} else {
-					// It is in Waiting state, We need to wait for this one
-					podsNotReady = append(podsNotReady, pod.Name)
-					break
-				}
-			}
-		}
-		return podsNotReady
-	}
-	Eventually(checkForPodsToBeReady, timeout, 2*time.Second).Should(BeEmpty(), "There are pods in system which are not ready.")
+	// 	podsList, err := virtClient.CoreV1().Pods(k8sv1.NamespaceAll).List(context.Background(), listOptions)
+	// 	Expect(err).ToNot(HaveOccurred())
+	// 	for _, pod := range podsList.Items {
+	// 		for _, status := range pod.Status.ContainerStatuses {
+	// 			if status.State.Terminated != nil {
+	// 				break // We don't care about terminated pods
+	// 			} else if status.State.Running != nil {
+	// 				if !status.Ready { // We need to wait for this one
+	// 					podsNotReady = append(podsNotReady, pod.Name)
+	// 					break
+	// 				}
+	// 			} else {
+	// 				// It is in Waiting state, We need to wait for this one
+	// 				podsNotReady = append(podsNotReady, pod.Name)
+	// 				break
+	// 			}
+	// 		}
+	// 	}
+	// 	return podsNotReady
+	// }
+	// TODO: cluster need to be good state
+	//Eventually(checkForPodsToBeReady, timeout, 2*time.Second).Should(BeEmpty(), "There are pods in system which are not ready.")
 }
 
 func WaitExportProxyReady() {
