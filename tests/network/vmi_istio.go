@@ -154,7 +154,7 @@ var istioTests = func(vmType VmType) {
 			Expect(err).ShouldNot(HaveOccurred())
 
 			By("Waiting for VMI to be ready")
-			libwait.WaitUntilVMIReady(vmi, console.LoginToAlpine)
+			libwait.WaitUntilVMIReady(vmi, console.LoginToFedora)
 		})
 		Describe("Live Migration", decorators.RequiresTwoSchedulableNodes, func() {
 			var sourcePodName string
@@ -202,14 +202,14 @@ var istioTests = func(vmType VmType) {
 
 			BeforeEach(func() {
 
-				bastionVMI = libvmifact.NewCirros(
+				bastionVMI = libvmifact.NewFedora(
 					libvmi.WithNetwork(v1.DefaultPodNetwork()),
 					libvmi.WithInterface(libvmi.InterfaceDeviceWithMasqueradeBinding([]v1.Port{}...)),
 				)
 
 				bastionVMI, err = virtClient.VirtualMachineInstance(namespace).Create(context.Background(), bastionVMI, metav1.CreateOptions{})
 				Expect(err).ToNot(HaveOccurred())
-				bastionVMI = libwait.WaitUntilVMIReady(bastionVMI, console.LoginToCirros)
+				bastionVMI = libwait.WaitUntilVMIReady(bastionVMI, console.LoginToFedora)
 			})
 			Context("With VMI having explicit ports specified", func() {
 				BeforeEach(func() {
@@ -331,7 +331,7 @@ var istioTests = func(vmType VmType) {
 			BeforeEach(func() {
 				networkData := cloudinit.CreateDefaultCloudInitNetworkData()
 
-				serverVMI = libvmifact.NewAlpineWithTestTooling(
+				serverVMI = libvmifact.NewFedora(
 					libvmi.WithNetwork(v1.DefaultPodNetwork()),
 					libvmi.WithInterface(libvmi.InterfaceDeviceWithMasqueradeBinding([]v1.Port{}...)),
 					libvmi.WithLabel("version", "v1"),
@@ -347,7 +347,7 @@ var istioTests = func(vmType VmType) {
 				Expect(err).ToNot(HaveOccurred())
 
 				By("Starting HTTP Server")
-				Expect(console.LoginToAlpine(serverVMI)).To(Succeed())
+				Expect(console.LoginToFedora(serverVMI)).To(Succeed())
 				vmnetserver.StartPythonHTTPServer(serverVMI, vmiServerTestPort)
 
 				By("Creating Istio VirtualService")
@@ -490,7 +490,7 @@ const enablePasswordAuth = "#cloud-config\nssh_pwauth: true\n"
 
 func createMasqueradeVm(ports []v1.Port) *v1.VirtualMachineInstance {
 	networkData := cloudinit.CreateDefaultCloudInitNetworkData()
-	vmi := libvmifact.NewAlpineWithTestTooling(
+	vmi := libvmifact.NewFedora(
 		libvmi.WithNetwork(v1.DefaultPodNetwork()),
 		libvmi.WithInterface(libvmi.InterfaceDeviceWithMasqueradeBinding(ports...)),
 		libvmi.WithLabel(vmiAppSelectorKey, vmiAppSelectorValue),
@@ -504,7 +504,7 @@ func createMasqueradeVm(ports []v1.Port) *v1.VirtualMachineInstance {
 }
 
 func createPasstVm(ports []v1.Port) *v1.VirtualMachineInstance {
-	vmi := libvmifact.NewAlpineWithTestTooling(
+	vmi := libvmifact.NewFedora(
 		libvmi.WithNetwork(v1.DefaultPodNetwork()),
 		libvmi.WithInterface(libvmi.InterfaceWithPasstBindingPlugin(ports...)),
 		libvmi.WithLabel(vmiAppSelectorKey, vmiAppSelectorValue),
