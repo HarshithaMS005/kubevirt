@@ -46,7 +46,7 @@ var _ = Describe(SIG("[rfe_id:150][crit:high][vendor:cnv-qe@redhat.com][level:co
 		serverVMILabels = map[string]string{"type": "test"}
 	})
 
-	Context("when three alpine VMs with default networking are started and serverVMI start an HTTP server on port 80 and 81", func() {
+	Context("when three fedora VMs with default networking are started and serverVMI start an HTTP server on port 80 and 81", func() {
 		var serverVMI, clientVMI *v1.VirtualMachineInstance
 
 		BeforeEach(func() {
@@ -392,19 +392,19 @@ func assertIPsNotEmptyForVMI(vmi *v1.VirtualMachineInstance) {
 }
 
 func createClientVmi(namespace string, virtClient kubecli.KubevirtClient) (*v1.VirtualMachineInstance, error) {
-	clientVMI := libvmifact.NewAlpineWithTestTooling(libnet.WithMasqueradeNetworking())
+	clientVMI := libvmifact.NewFedora(libnet.WithMasqueradeNetworking())
 	var err error
 	clientVMI, err = virtClient.VirtualMachineInstance(namespace).Create(context.Background(), clientVMI, metav1.CreateOptions{})
 	if err != nil {
 		return nil, err
 	}
 
-	clientVMI = libwait.WaitUntilVMIReady(clientVMI, console.LoginToAlpine)
+	clientVMI = libwait.WaitUntilVMIReady(clientVMI, console.LoginToFedora)
 	return clientVMI, nil
 }
 
 func createServerVmi(virtClient kubecli.KubevirtClient, namespace string, serverVMILabels map[string]string) (*v1.VirtualMachineInstance, error) {
-	serverVMI := libvmifact.NewAlpineWithTestTooling(
+	serverVMI := libvmifact.NewFedora(
 		libnet.WithMasqueradeNetworking(
 			v1.Port{
 				Name:     "http80",
@@ -423,7 +423,7 @@ func createServerVmi(virtClient kubecli.KubevirtClient, namespace string, server
 	if err != nil {
 		return nil, err
 	}
-	serverVMI = libwait.WaitUntilVMIReady(serverVMI, console.LoginToAlpine)
+	serverVMI = libwait.WaitUntilVMIReady(serverVMI, console.LoginToFedora)
 
 	By("Start HTTP server at serverVMI on ports 80 and 81")
 	vmnetserver.HTTPServer.Start(serverVMI, 80)
