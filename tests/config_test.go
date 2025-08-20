@@ -113,6 +113,7 @@ var _ = Describe("[rfe_id:899][crit:medium][vendor:cnv-qe@redhat.com][level:comp
 
 				By("Running VMI")
 				vmi := libvmifact.NewAlpine(libvmi.WithConfigMapDisk(configMapName, configMapName))
+				vmi.Spec.Domain.Devices.Disks[0].Serial = "disk"
 				vmi = libvmops.RunVMIAndExpectLaunch(vmi, 90)
 				Expect(console.LoginToAlpine(vmi)).To(Succeed())
 
@@ -137,7 +138,7 @@ var _ = Describe("[rfe_id:899][crit:medium][vendor:cnv-qe@redhat.com][level:comp
 				By("Checking mounted iso image")
 				Expect(console.SafeExpectBatch(vmi, []expect.Batcher{
 					// mount iso ConfigMap image
-					&expect.BSnd{S: "mount /dev/sda /mnt\n"},
+					&expect.BSnd{S: "mount /dev/disk/by-id/*disk /mnt\n"},
 					&expect.BExp{R: console.PromptExpression},
 					&expect.BSnd{S: "echo $?\n"},
 					&expect.BExp{R: console.RetValue("0")},
@@ -214,6 +215,7 @@ var _ = Describe("[rfe_id:899][crit:medium][vendor:cnv-qe@redhat.com][level:comp
 
 				By("Running VMI")
 				vmi := libvmifact.NewAlpine(libvmi.WithSecretDisk(secretName, secretName))
+				vmi.Spec.Domain.Devices.Disks[0].Serial = "disk"
 				vmi = libvmops.RunVMIAndExpectLaunch(vmi, 90)
 				Expect(console.LoginToAlpine(vmi)).To(Succeed())
 
@@ -236,7 +238,7 @@ var _ = Describe("[rfe_id:899][crit:medium][vendor:cnv-qe@redhat.com][level:comp
 				By("Checking mounted iso image")
 				Expect(console.SafeExpectBatch(vmi, []expect.Batcher{
 					// mount iso Secret image
-					&expect.BSnd{S: "mount /dev/sda /mnt\n"},
+					&expect.BSnd{S: "mount /dev/disk/by-id/*disk /mnt\n"},
 					&expect.BExp{R: console.PromptExpression},
 					&expect.BSnd{S: "echo $?\n"},
 					&expect.BExp{R: console.RetValue("0")},
@@ -294,6 +296,8 @@ var _ = Describe("[rfe_id:899][crit:medium][vendor:cnv-qe@redhat.com][level:comp
 		It("[test_id:998]Should be the namespace and token the same for a pod and vmi", func() {
 			By("Running VMI")
 			vmi := libvmifact.NewAlpine(libvmi.WithServiceAccountDisk("default"))
+			// Assign a stable serial to the disk
+			vmi.Spec.Domain.Devices.Disks[0].Serial = "secretdisk"
 			vmi = libvmops.RunVMIAndExpectLaunch(vmi, 90)
 			Expect(console.LoginToAlpine(vmi)).To(Succeed())
 
@@ -326,14 +330,28 @@ var _ = Describe("[rfe_id:899][crit:medium][vendor:cnv-qe@redhat.com][level:comp
 
 			By("Checking mounted iso image")
 			Expect(console.SafeExpectBatch(vmi, []expect.Batcher{
-				// mount service account iso image
-				&expect.BSnd{S: "mount /dev/sda /mnt\n"},
+				// create mount directory
+				&expect.BSnd{S: "mkdir -p /mnt/secret\n"},
 				&expect.BExp{R: console.PromptExpression},
+
+				// find the disk dynamically
+				&expect.BSnd{S: "DEV=$(ls /dev/disk/by-id/*secretdisk 2>/dev/null | head -n1)\n"},
+				&expect.BExp{R: console.PromptExpression},
+				&expect.BSnd{S: "echo Device is $DEV\n"},
+				&expect.BExp{R: "Device is /dev/"}, // sanity check
+
+				// mount the disk safely
+				&expect.BSnd{S: "mount $DEV /mnt/secret || (echo 'mount failed' && ls -l /dev/disk/by-id/ && exit 1)\n"},
+				&expect.BExp{R: console.PromptExpression},
+
+				// confirm mount
 				&expect.BSnd{S: "echo $?\n"},
 				&expect.BExp{R: console.RetValue("0")},
-				&expect.BSnd{S: "cat /mnt/namespace\n"},
+
+				// check contents
+				&expect.BSnd{S: "cat /mnt/secret/namespace\n"},
 				&expect.BExp{R: testsuite.GetTestNamespace(vmi)},
-				&expect.BSnd{S: "tail -c 20 /mnt/token\n"},
+				&expect.BSnd{S: "tail -c 20 /mnt/secret/token\n"},
 				&expect.BExp{R: token},
 			}, 200)).To(Succeed())
 		})
@@ -510,6 +528,7 @@ var _ = Describe("[rfe_id:899][crit:medium][vendor:cnv-qe@redhat.com][level:comp
 
 				By("Running VMI")
 				vmi := libvmifact.NewAlpine(libvmi.WithSecretDisk(secretName, secretName))
+				vmi.Spec.Domain.Devices.Disks[0].Serial = "disk"
 				vmi = libvmops.RunVMIAndExpectLaunch(vmi, 90)
 				Expect(console.LoginToAlpine(vmi)).To(Succeed())
 
@@ -544,7 +563,7 @@ var _ = Describe("[rfe_id:899][crit:medium][vendor:cnv-qe@redhat.com][level:comp
 					// mount iso Secret image
 					&expect.BSnd{S: "sudo su -\n"},
 					&expect.BExp{R: console.PromptExpression},
-					&expect.BSnd{S: "mount /dev/sda /mnt\n"},
+					&expect.BSnd{S: "mount /dev/disk/by-id/*disk /mnt\n"},
 					&expect.BExp{R: console.PromptExpression},
 					&expect.BSnd{S: "echo $?\n"},
 					&expect.BExp{R: console.RetValue("0")},
@@ -571,6 +590,7 @@ var _ = Describe("[rfe_id:899][crit:medium][vendor:cnv-qe@redhat.com][level:comp
 			vmi := libvmifact.NewAlpine(
 				libvmi.WithLabel(testLabelKey, testLabelVal),
 				libvmi.WithDownwardAPIDisk(downwardAPIName))
+			vmi.Spec.Domain.Devices.Disks[0].Serial = "disk"
 			vmi = libvmops.RunVMIAndExpectLaunch(vmi, 90)
 			Expect(console.LoginToAlpine(vmi)).To(Succeed())
 
@@ -593,7 +613,8 @@ var _ = Describe("[rfe_id:899][crit:medium][vendor:cnv-qe@redhat.com][level:comp
 			By("Checking mounted iso image")
 			Expect(console.ExpectBatch(vmi, []expect.Batcher{
 				// mount iso DownwardAPI image
-				&expect.BSnd{S: "mount /dev/sda /mnt\n"},
+				&expect.BSnd{S: "mount /dev/disk/by-id/disk /mnt\n"},
+				&expect.BExp{R: ""},
 				&expect.BSnd{S: "echo $?\n"},
 				&expect.BExp{R: console.RetValue("0")},
 				&expect.BSnd{S: "grep " + testLabelKey + " /mnt/labels\n"},
