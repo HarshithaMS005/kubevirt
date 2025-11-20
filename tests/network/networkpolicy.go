@@ -392,19 +392,19 @@ func assertIPsNotEmptyForVMI(vmi *v1.VirtualMachineInstance) {
 }
 
 func createClientVmi(namespace string, virtClient kubecli.KubevirtClient) (*v1.VirtualMachineInstance, error) {
-	clientVMI := libvmifact.NewFedora(libnet.WithMasqueradeNetworking())
+	clientVMI := libvmifact.NewAlpineWithTestTooling(libnet.WithMasqueradeNetworking())
 	var err error
 	clientVMI, err = virtClient.VirtualMachineInstance(namespace).Create(context.Background(), clientVMI, metav1.CreateOptions{})
 	if err != nil {
 		return nil, err
 	}
 
-	clientVMI = libwait.WaitUntilVMIReady(clientVMI, console.LoginToFedora)
+	clientVMI = libwait.WaitUntilVMIReady(clientVMI, console.LoginToAlpine)
 	return clientVMI, nil
 }
 
 func createServerVmi(virtClient kubecli.KubevirtClient, namespace string, serverVMILabels map[string]string) (*v1.VirtualMachineInstance, error) {
-	serverVMI := libvmifact.NewFedora(
+	serverVMI := libvmifact.NewAlpineWithTestTooling(
 		libnet.WithMasqueradeNetworking(
 			v1.Port{
 				Name:     "http80",
@@ -423,7 +423,7 @@ func createServerVmi(virtClient kubecli.KubevirtClient, namespace string, server
 	if err != nil {
 		return nil, err
 	}
-	serverVMI = libwait.WaitUntilVMIReady(serverVMI, console.LoginToFedora)
+	serverVMI = libwait.WaitUntilVMIReady(serverVMI, console.LoginToAlpine)
 
 	By("Start HTTP server at serverVMI on ports 80 and 81")
 	vmnetserver.HTTPServer.Start(serverVMI, 80)

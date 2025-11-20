@@ -183,7 +183,7 @@ var _ = Describe(SIG("Services", func() {
 
 				Expect(job.WaitForJobToSucceed(tcpJob, 90*time.Second)).To(Succeed(), expectConnectivityToExposedService)
 			},
-				Entry("when the service is exposed by an IPv4 address.", k8sv1.IPv4Protocol),
+				Entry("test_id:sss when the service is exposed by an IPv4 address.", k8sv1.IPv4Protocol),
 				Entry("when the service is exposed by an IPv6 address.", k8sv1.IPv6Protocol),
 			)
 		})

@@ -518,7 +518,7 @@ var _ = Describe(SIG("[rfe_id:694][crit:medium][vendor:cnv-qe@redhat.com][level:
 			},
 				Entry("with a specific port number [IPv4]", []v1.Port{{Name: "http", Port: 8080}}, 8080, ""),
 				Entry("with a specific port used by live migration", portsUsedByLiveMigration(), LibvirtDirectMigrationPort, ""),
-				Entry("without a specific port number [IPv4]", []v1.Port{}, 8080, ""),
+				Entry("test_id:zzz without a specific port number [IPv4]", []v1.Port{}, 8080, ""),
 				Entry("with custom CIDR [IPv4] containing leading zeros", []v1.Port{}, 8080, cidrWithLeadingZeros),
 			)
 
@@ -652,7 +652,7 @@ var _ = Describe(SIG("[rfe_id:694][crit:medium][vendor:cnv-qe@redhat.com][level:
 				Expect(ping(podIP)).To(Succeed())
 			},
 				Entry("without a specific port number", []v1.Port{}),
-				Entry("with explicit ports used by live migration", portsUsedByLiveMigration()),
+				Entry("test_id:yyy with explicit ports used by live migration", portsUsedByLiveMigration()),
 			)
 
 			It("should preserve connectivity - IPv6", decorators.Conformance, func() {
@@ -753,12 +753,12 @@ var _ = Describe(SIG("[rfe_id:694][crit:medium][vendor:cnv-qe@redhat.com][level:
 				Expect(err).ToNot(HaveOccurred())
 
 				By("Create another VMI")
-				anotherVmi = libvmifact.NewFedora(libnet.WithMasqueradeNetworking())
+				anotherVmi = libvmifact.NewAlpineWithTestTooling(libnet.WithMasqueradeNetworking())
 				anotherVmi, err = virtClient.VirtualMachineInstance(testsuite.GetTestNamespace(nil)).Create(context.Background(), anotherVmi, metav1.CreateOptions{})
 				Expect(err).ToNot(HaveOccurred())
 
 				By("Wait for VMIs to be ready")
-				anotherVmi = libwait.WaitUntilVMIReady(anotherVmi, console.LoginToFedora)
+				anotherVmi = libwait.WaitUntilVMIReady(anotherVmi, console.LoginToAlpine)
 
 				vmi = libwait.WaitUntilVMIReady(vmi, console.LoginToFedora)
 			})

@@ -215,7 +215,7 @@ var _ = Describe(SIG("Multus", Serial, decorators.Multus, func() {
 
 			It("[test_id:1752]should create a virtual machine with one interface with network definition from different namespace", func() {
 				By("checking virtual machine instance can ping using ptp cni plugin")
-				detachedVMI := libvmifact.NewFedora(
+				detachedVMI := libvmifact.NewAlpineWithTestTooling(
 					libvmi.WithCloudInitNoCloud(libvmici.WithNoCloudNetworkData(networkData)),
 				)
 				detachedVMI.Spec.Domain.Devices.Interfaces = []v1.Interface{{Name: "ptp", InterfaceBindingMethod: v1.InterfaceBindingMethod{Bridge: &v1.InterfaceBridge{}}}}
@@ -227,7 +227,7 @@ var _ = Describe(SIG("Multus", Serial, decorators.Multus, func() {
 
 				detachedVMI, err = virtClient.VirtualMachineInstance(testsuite.GetTestNamespace(nil)).Create(context.Background(), detachedVMI, metav1.CreateOptions{})
 				Expect(err).ToNot(HaveOccurred())
-				libwait.WaitUntilVMIReady(detachedVMI, console.LoginToFedora)
+				libwait.WaitUntilVMIReady(detachedVMI, console.LoginToAlpine)
 
 				Expect(libnet.PingFromVMConsole(detachedVMI, ptpGateway)).To(Succeed())
 			})
@@ -275,7 +275,7 @@ var _ = Describe(SIG("Multus", Serial, decorators.Multus, func() {
 					),
 				)
 				Expect(err).NotTo(HaveOccurred())
-				detachedVMI := libvmifact.NewFedora(
+				detachedVMI := libvmifact.NewAlpineWithTestTooling(
 					libvmi.WithCloudInitNoCloud(libvmici.WithNoCloudNetworkData(networkData)),
 				)
 				detachedVMI.Spec.Domain.Devices.Interfaces = []v1.Interface{{Name: "ptp", InterfaceBindingMethod: v1.InterfaceBindingMethod{Bridge: &v1.InterfaceBridge{}}}}
@@ -290,7 +290,7 @@ var _ = Describe(SIG("Multus", Serial, decorators.Multus, func() {
 
 				detachedVMI, err = virtClient.VirtualMachineInstance(testsuite.GetTestNamespace(nil)).Create(context.Background(), detachedVMI, metav1.CreateOptions{})
 				Expect(err).ToNot(HaveOccurred())
-				libwait.WaitUntilVMIReady(detachedVMI, console.LoginToFedora)
+				libwait.WaitUntilVMIReady(detachedVMI, console.LoginToAlpine)
 
 				By("checking virtual machine instance can ping using ptp cni plugin")
 				Expect(libnet.PingFromVMConsole(detachedVMI, ptpGateway)).To(Succeed())
@@ -338,14 +338,14 @@ var _ = Describe(SIG("Multus", Serial, decorators.Multus, func() {
 				vmiOne := createVMIOnNode(interfaces, networks)
 				vmiTwo := createVMIOnNode(interfaces, networks)
 
-				libwait.WaitUntilVMIReady(vmiOne, console.LoginToFedora)
-				libwait.WaitUntilVMIReady(vmiTwo, console.LoginToFedora)
+				libwait.WaitUntilVMIReady(vmiOne, console.LoginToAlpine)
+				libwait.WaitUntilVMIReady(vmiTwo, console.LoginToAlpine)
 
-				Expect(configureFedoraInterfaceIP(vmiOne, ifaceName, staticIPVm1)).To(Succeed())
+				Expect(configureAlpineInterfaceIP(vmiOne, ifaceName, staticIPVm1)).To(Succeed())
 				By(fmt.Sprintf("checking virtual machine interface %s state", ifaceName))
 				Expect(libnet.InterfaceExists(vmiOne, ifaceName)).To(Succeed())
 
-				Expect(configureFedoraInterfaceIP(vmiTwo, ifaceName, staticIPVm2)).To(Succeed())
+				Expect(configureAlpineInterfaceIP(vmiTwo, ifaceName, staticIPVm2)).To(Succeed())
 				By(fmt.Sprintf("checking virtual machine interface %s state", ifaceName))
 				Expect(libnet.InterfaceExists(vmiTwo, ifaceName)).To(Succeed())
 				ipAddr := ""
@@ -456,7 +456,7 @@ var _ = Describe(SIG("Multus", Serial, decorators.Multus, func() {
 
 				vmiOne := createVMIOnNode(interfaces, networks)
 
-				libwait.WaitUntilVMIReady(vmiOne, console.LoginToFedora)
+				libwait.WaitUntilVMIReady(vmiOne, console.LoginToAlpine)
 
 				updatedVmi, err := virtClient.VirtualMachineInstance(testsuite.GetTestNamespace(vmiOne)).Get(context.Background(), vmiOne.Name, metav1.GetOptions{})
 				Expect(err).ToNot(HaveOccurred())
@@ -706,7 +706,7 @@ func changeInterfaceMACAddress(vmi *v1.VirtualMachineInstance, interfaceName, ne
 }
 
 // If staticIP is empty the interface would get a dynamic IP
-func configureFedoraInterfaceIP(vmi *v1.VirtualMachineInstance, ifaceName, staticIP string) error {
+func configureAlpineInterfaceIP(vmi *v1.VirtualMachineInstance, ifaceName, staticIP string) error {
 	if staticIP == "" {
 		return activateDHCPOnVMInterfaces(vmi, ifaceName)
 	}

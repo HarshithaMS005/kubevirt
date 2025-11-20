@@ -70,7 +70,7 @@ var _ = Describe(SIG("network binding plugin", Serial, decorators.NetCustomBindi
 			)
 			passtIface := libvmi.InterfaceWithPasstBindingPlugin()
 			passtIface.MacAddress = macAddress
-			vmi := libvmifact.NewFedora(
+			vmi := libvmifact.NewAlpineWithTestTooling(
 				libvmi.WithInterface(passtIface),
 				libvmi.WithNetwork(v1.DefaultPodNetwork()),
 			)
@@ -82,7 +82,7 @@ var _ = Describe(SIG("network binding plugin", Serial, decorators.NetCustomBindi
 
 			vmi = libwait.WaitUntilVMIReady(
 				vmi,
-				console.LoginToFedora,
+				console.LoginToAlpine,
 				libwait.WithFailOnWarnings(false),
 				libwait.WithTimeout(180),
 			)
@@ -124,7 +124,7 @@ var _ = Describe(SIG("network binding plugin", Serial, decorators.NetCustomBindi
 			macvtapIface := libvmi.InterfaceWithBindingPlugin(
 				ifaceName, v1.PluginBinding{Name: macvtapBindingName},
 			)
-			vmi = libvmifact.NewFedora(
+			vmi = libvmifact.NewAlpineWithTestTooling(
 				libvmi.WithInterface(
 					*libvmi.InterfaceWithMac(&macvtapIface, chosenMAC)),
 				libvmi.WithNetwork(libvmi.MultusNetwork(ifaceName, macvtapNetworkName)))
@@ -133,7 +133,7 @@ var _ = Describe(SIG("network binding plugin", Serial, decorators.NetCustomBindi
 			Expect(err).NotTo(HaveOccurred())
 			vmi = libwait.WaitUntilVMIReady(
 				vmi,
-				console.LoginToFedora)
+				console.LoginToAlpine)
 
 			Expect(vmi.Status.Interfaces).To(HaveLen(1), "should have a single interface")
 			Expect(vmi.Status.Interfaces[0].MAC).To(Equal(chosenMAC), "the expected MAC address should be set in the VMI")
@@ -157,14 +157,14 @@ var _ = Describe(SIG("network binding plugin", Serial, decorators.NetCustomBindi
 			primaryIface := libvmi.InterfaceWithBindingPlugin(
 				networkName, v1.PluginBinding{Name: bindingName},
 			)
-			vmi = libvmifact.NewFedora(
+			vmi = libvmifact.NewAlpineWithTestTooling(
 				libvmi.WithInterface(primaryIface),
 				libvmi.WithNetwork(v1.DefaultPodNetwork()),
 			)
 
 			vmi, err := kubevirt.Client().VirtualMachineInstance(testsuite.GetTestNamespace(nil)).Create(context.Background(), vmi, metav1.CreateOptions{})
 			Expect(err).NotTo(HaveOccurred())
-			vmi = libwait.WaitUntilVMIReady(vmi, console.LoginToFedora, libwait.WithTimeout(30))
+			vmi = libwait.WaitUntilVMIReady(vmi, console.LoginToAlpine, libwait.WithTimeout(30))
 
 			Expect(vmi.Status.Interfaces).To(HaveLen(1))
 			Expect(vmi.Status.Interfaces[0].Name).To(Equal(primaryIface.Name))
@@ -212,7 +212,7 @@ var _ = Describe(SIG("network binding plugin", Serial, decorators.NetCustomBindi
 				libvmi.WithNetwork(&primaryNetwork),
 				libvmi.WithNodeAffinityFor(nodeName),
 			}
-			serverVMI := libvmifact.NewFedora(opts...)
+			serverVMI := libvmifact.NewAlpineWithTestTooling(opts...)
 
 			primaryIface.MacAddress = "de:ad:00:00:be:aa"
 			opts = []libvmi.Option{
@@ -220,7 +220,7 @@ var _ = Describe(SIG("network binding plugin", Serial, decorators.NetCustomBindi
 				libvmi.WithNetwork(&primaryNetwork),
 				libvmi.WithNodeAffinityFor(nodeName),
 			}
-			clientVMI := libvmifact.NewFedora(opts...)
+			clientVMI := libvmifact.NewAlpineWithTestTooling(opts...)
 
 			ns := testsuite.GetTestNamespace(nil)
 			serverVMI, err = kubevirt.Client().VirtualMachineInstance(ns).Create(context.Background(), serverVMI, metav1.CreateOptions{})
@@ -228,8 +228,8 @@ var _ = Describe(SIG("network binding plugin", Serial, decorators.NetCustomBindi
 			clientVMI, err = kubevirt.Client().VirtualMachineInstance(ns).Create(context.Background(), clientVMI, metav1.CreateOptions{})
 			Expect(err).ToNot(HaveOccurred())
 
-			serverVMI = libwait.WaitUntilVMIReady(serverVMI, console.LoginToFedora)
-			clientVMI = libwait.WaitUntilVMIReady(clientVMI, console.LoginToFedora)
+			serverVMI = libwait.WaitUntilVMIReady(serverVMI, console.LoginToAlpine)
+			clientVMI = libwait.WaitUntilVMIReady(clientVMI, console.LoginToAlpine)
 
 			Expect(libnet.AddIPAddress(serverVMI, guestIfaceName, serverCIDR)).To(Succeed())
 			Expect(libnet.AddIPAddress(clientVMI, guestIfaceName, clientCIDR)).To(Succeed())

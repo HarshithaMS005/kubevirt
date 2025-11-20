@@ -331,7 +331,7 @@ var istioTests = func(vmType VmType) {
 			BeforeEach(func() {
 				networkData := cloudinit.CreateDefaultCloudInitNetworkData()
 
-				serverVMI = libvmifact.NewFedora(
+				serverVMI = libvmifact.NewAlpineWithTestTooling(
 					libvmi.WithNetwork(v1.DefaultPodNetwork()),
 					libvmi.WithInterface(libvmi.InterfaceDeviceWithMasqueradeBinding([]v1.Port{}...)),
 					libvmi.WithLabel("version", "v1"),
@@ -347,7 +347,7 @@ var istioTests = func(vmType VmType) {
 				Expect(err).ToNot(HaveOccurred())
 
 				By("Starting HTTP Server")
-				Expect(console.LoginToFedora(serverVMI)).To(Succeed())
+				Expect(console.LoginToAlpine(serverVMI)).To(Succeed())
 				vmnetserver.StartPythonHTTPServer(serverVMI, vmiServerTestPort)
 
 				By("Creating Istio VirtualService")
@@ -490,7 +490,7 @@ const enablePasswordAuth = "#cloud-config\nssh_pwauth: true\n"
 
 func createMasqueradeVm(ports []v1.Port) *v1.VirtualMachineInstance {
 	networkData := cloudinit.CreateDefaultCloudInitNetworkData()
-	vmi := libvmifact.NewFedora(
+	vmi := libvmifact.NewAlpineWithTestTooling(
 		libvmi.WithNetwork(v1.DefaultPodNetwork()),
 		libvmi.WithInterface(libvmi.InterfaceDeviceWithMasqueradeBinding(ports...)),
 		libvmi.WithLabel(vmiAppSelectorKey, vmiAppSelectorValue),
@@ -504,7 +504,7 @@ func createMasqueradeVm(ports []v1.Port) *v1.VirtualMachineInstance {
 }
 
 func createPasstVm(ports []v1.Port) *v1.VirtualMachineInstance {
-	vmi := libvmifact.NewFedora(
+	vmi := libvmifact.NewAlpineWithTestTooling(
 		libvmi.WithNetwork(v1.DefaultPodNetwork()),
 		libvmi.WithInterface(libvmi.InterfaceWithPasstBindingPlugin(ports...)),
 		libvmi.WithLabel(vmiAppSelectorKey, vmiAppSelectorValue),
