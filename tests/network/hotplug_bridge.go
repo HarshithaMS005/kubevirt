@@ -93,7 +93,7 @@ var _ = Describe(SIG("bridge nic-hotplug", Serial, func() {
 
 		BeforeEach(func() {
 			By("Creating a VM")
-			vmi := libvmifact.NewAlpineWithTestTooling(
+			vmi := libvmifact.NewFedora(
 				libvmi.WithInterface(*v1.DefaultMasqueradeNetworkInterface()),
 				libvmi.WithNetwork(v1.DefaultPodNetwork()),
 			)
@@ -104,7 +104,7 @@ var _ = Describe(SIG("bridge nic-hotplug", Serial, func() {
 			Eventually(matcher.ThisVM(hotPluggedVM)).WithTimeout(6 * time.Minute).WithPolling(3 * time.Second).Should(matcher.HaveConditionTrue(v1.VirtualMachineInstanceAgentConnected))
 			hotPluggedVMI, err = kubevirt.Client().VirtualMachineInstance(testsuite.GetTestNamespace(nil)).Get(context.Background(), hotPluggedVM.Name, metav1.GetOptions{})
 			Expect(err).ToNot(HaveOccurred())
-			Expect(console.LoginToAlpine(hotPluggedVMI)).To(Succeed())
+			Expect(console.LoginToFedora(hotPluggedVMI)).To(Succeed())
 
 			By("Creating a NAD")
 			netAttachDef := libnet.NewBridgeNetAttachDef(nadName, linuxBridgeName)
@@ -316,7 +316,7 @@ var _ = Describe(SIG("bridge nic-hotunplug", Serial, func() {
 			By("running a VM")
 			ifaceWithStateDown := libvmi.InterfaceDeviceWithBridgeBinding(linuxBridgeNetworkName2)
 			ifaceWithStateDown.State = v1.InterfaceStateLinkDown
-			vmi = libvmifact.NewAlpineWithTestTooling(libnet.WithMasqueradeNetworking(),
+			vmi = libvmifact.NewFedora(libnet.WithMasqueradeNetworking(),
 				libvmi.WithNetwork(libvmi.MultusNetwork(linuxBridgeNetworkName1, nadName)),
 				libvmi.WithNetwork(libvmi.MultusNetwork(linuxBridgeNetworkName2, nadName)),
 				libvmi.WithInterface(libvmi.InterfaceDeviceWithBridgeBinding(linuxBridgeNetworkName1)),
@@ -327,7 +327,7 @@ var _ = Describe(SIG("bridge nic-hotunplug", Serial, func() {
 			Eventually(matcher.ThisVM(vm)).WithTimeout(6 * time.Minute).WithPolling(3 * time.Second).Should(matcher.HaveConditionTrue(v1.VirtualMachineInstanceAgentConnected))
 			vmi, err = kubevirt.Client().VirtualMachineInstance(testsuite.GetTestNamespace(nil)).Get(context.Background(), vm.Name, metav1.GetOptions{})
 			Expect(err).ToNot(HaveOccurred())
-			Expect(console.LoginToAlpine(vmi)).To(Succeed())
+			Expect(console.LoginToFedora(vmi)).To(Succeed())
 		})
 
 		DescribeTable("hot-unplug network interface succeed", func(plugMethod hotplugMethod) {

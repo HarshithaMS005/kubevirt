@@ -64,7 +64,7 @@ var _ = Describe(SIG("Slirp", decorators.Networking, decorators.NetCustomBinding
 	})
 
 	It("VMI with SLIRP interface, custom mac and port is configured correctly", func() {
-		vmi := libvmifact.NewCirros(
+		vmi := libvmifact.NewAlpine(
 			libvmi.WithNetwork(v1.DefaultPodNetwork()),
 			libvmi.WithInterface(v1.Interface{
 				Name:       v1.DefaultPodNetwork().Name,
@@ -81,7 +81,7 @@ var _ = Describe(SIG("Slirp", decorators.Networking, decorators.NetCustomBinding
 			libwait.WithTimeout(180),
 		)
 
-		generateHelloWorldServer(vmi, 80, "tcp", console.LoginToCirros, true)
+		generateHelloWorldServer(vmi, 80, "tcp", console.LoginToAlpine, true)
 
 		By("have containerPort in the pod manifest")
 		vmiPod, err := libpod.GetPodByVirtualMachineInstance(vmi, vmi.Namespace)
