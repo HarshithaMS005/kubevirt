@@ -25,7 +25,8 @@ import (
 )
 
 const (
-	failedUpdateDaemonSetReason = "FailedUpdate"
+	failedUpdateDaemonSetReason     = "FailedUpdate"
+	VirtHandlerClientCertsMountPath = "/etc/virt-handler/clientcertificates"
 )
 
 var (
@@ -270,15 +271,15 @@ func (r *Reconciler) processCanaryUpgrade(cachedDaemonSet, newDS *appsv1.DaemonS
 				SetGeneration(&r.kv.Status.Generations, newDS)
 				return false, err, CanaryUpgradeStatusWaitingDaemonSetRollout
 			}
-			if hasCertificateSecret(&newDS.Spec.Template.Spec, components.VirtHandlerCertSecretName) {
-				unattachCertificateSecret(&newDS.Spec.Template.Spec, components.VirtHandlerCertSecretName)
-				var err error
-				cachedDaemonSet, err = r.patchDaemonSet(cachedDaemonSet, newDS)
-				if err != nil {
-					return false, err, CanaryUpgradeStatusFailed
-				}
-				log.V(2).Infof("daemonSet %v updated to secure certificates", newDS.GetName())
-			}
+			// if hasCertificateSecret(&newDS.Spec.Template.Spec, components.VirtHandlerCertSecretName) {
+			// 	unattachCertificateSecret(&newDS.Spec.Template.Spec, components.VirtHandlerCertSecretName)
+			// 	var err error
+			// 	cachedDaemonSet, err = r.patchDaemonSet(cachedDaemonSet, newDS)
+			// 	if err != nil {
+			// 		return false, err, CanaryUpgradeStatusFailed
+			// 	}
+			// 	log.V(2).Infof("daemonSet %v updated to secure certificates", newDS.GetName())
+			// }
 		}
 
 		SetGeneration(&r.kv.Status.Generations, cachedDaemonSet)
@@ -362,6 +363,24 @@ func (r *Reconciler) syncDaemonSet(daemonSet *appsv1.DaemonSet) (bool, error) {
 
 	if daemonSet.GetName() == "virt-handler" {
 		setMaxDevices(r.kv, daemonSet)
+		daemonSet.Spec.Template.Spec.Volumes = append(daemonSet.Spec.Template.Spec.Volumes, corev1.Volume{
+			Name: components.VirtHandlerCertSecretName, // i.e., "kubevirt-virt-handler-client-certs"
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName:  components.VirtHandlerCertSecretName,
+					DefaultMode: pointer.P[int32](420),
+					Optional:    pointer.P(true),
+				},
+			},
+		})
+		if len(daemonSet.Spec.Template.Spec.Containers) > 0 {
+			daemonSet.Spec.Template.Spec.Containers[0].VolumeMounts = append(daemonSet.Spec.Template.Spec.Containers[0].VolumeMounts, corev1.VolumeMount{
+				Name:      components.VirtHandlerCertSecretName, // i.e., "kubevirt-virt-handler-client-certs"
+				ReadOnly:  true,
+				MountPath: VirtHandlerClientCertsMountPath, // i.e., "/etc/virt-handler/clientcertificates"
+			})
+		}
+
 	}
 
 	var cachedDaemonSet *appsv1.DaemonSet
@@ -371,7 +390,6 @@ func (r *Reconciler) syncDaemonSet(daemonSet *appsv1.DaemonSet) (bool, error) {
 		r.expectations.DaemonSet.RaiseExpectations(r.kvKey, 1, 0)
 		if supportsTLS(daemonSet) && !hasTLS(daemonSet) {
 			insertTLS(daemonSet)
-			unattachCertificateSecret(&daemonSet.Spec.Template.Spec, components.VirtHandlerCertSecretName)
 		}
 
 		daemonSet, err := apps.DaemonSets(kv.Namespace).Create(context.Background(), daemonSet, metav1.CreateOptions{})
