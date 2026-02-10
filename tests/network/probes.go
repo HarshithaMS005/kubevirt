@@ -48,7 +48,7 @@ var _ = Describe(SIG("[ref_id:1182]Probes", func() {
 			port           = 1500
 		)
 
-		It("should succeed with working TCP probe and tcp server on ipv4", func() {
+		It("test_id:2229 should succeed with working TCP probe and tcp server on ipv4", func() {
 			libnet.SkipWhenClusterNotSupportIPFamily(k8sv1.IPv4Protocol)
 
 			By(specifyingVMReadinessProbe)
@@ -69,7 +69,7 @@ var _ = Describe(SIG("[ref_id:1182]Probes", func() {
 				Should(matcher.HaveConditionTrue(v1.VirtualMachineInstanceReady))
 		})
 
-		It("should fail when there is no TCP server listening inside the guest", func() {
+		It("test_id:2221 should fail when there is no TCP server listening inside the guest", func() {
 			By(specifyingVMReadinessProbe)
 			readinessProbe := createTCPProbe(period, initialSeconds, port)
 			vmi = libvmifact.NewAlpine(withReadinessProbe(readinessProbe))
@@ -90,7 +90,7 @@ var _ = Describe(SIG("[ref_id:1182]Probes", func() {
 			port           = 1500
 		)
 
-		It("should not fail the VMI with working TCP probe and tcp server on ipv4", func() {
+		It("test_id:111 should not fail the VMI with working TCP probe and tcp server on ipv4", func() {
 			libnet.SkipWhenClusterNotSupportIPFamily(k8sv1.IPv4Protocol)
 
 			By(specifyingVMLivenessProbe)
@@ -110,7 +110,7 @@ var _ = Describe(SIG("[ref_id:1182]Probes", func() {
 				Should(Not(BeTrue()))
 		})
 
-		It("should fail when there is no TCP server listening inside the guest", func() {
+		It("test_id:1111 should fail when there is no TCP server listening inside the guest", func() {
 			By("Specifying a VMI with a livenessProbe probe")
 
 			livenessProbe := createTCPProbe(period, initialSeconds, port)

@@ -22,6 +22,7 @@ package cloudinit
 import (
 	"fmt"
 
+	"kubevirt.io/kubevirt/tests/libnet/cluster"
 	"kubevirt.io/kubevirt/tests/libnet/dns"
 
 	"sigs.k8s.io/yaml"
@@ -91,6 +92,22 @@ func WithDHCP6Enabled() NetworkDataInterfaceOption {
 	return func(networkDataInterface *CloudInitInterface) error {
 		enabled := true
 		networkDataInterface.DHCP6 = &enabled
+		return nil
+	}
+}
+
+func WithDHCP4Disabled() NetworkDataInterfaceOption {
+	return func(networkDataInterface *CloudInitInterface) error {
+		disabled := false
+		networkDataInterface.DHCP4 = &disabled
+		return nil
+	}
+}
+
+func WithDHCP6Disabled() NetworkDataInterfaceOption {
+	return func(networkDataInterface *CloudInitInterface) error {
+		disabled := false
+		networkDataInterface.DHCP6 = &disabled
 		return nil
 	}
 }
@@ -192,6 +209,36 @@ func CreateDefaultCloudInitNetworkData() string {
 		panic(err)
 	}
 	return data
+}
+
+// NetworkDataMatchingClusterIPFamilies returns cloud-init v2 network-config for eth0. Guest config is aligned
+// with cluster IPv4/IPv6 from virt-handler PodIPs (cluster.SupportsIpv4 / SupportsIpv6): dual-stack matches
+// CreateDefaultCloudInitNetworkData; IPv4-only uses DHCPv4 only; IPv6-only uses static IPv6 + gateway6 (no DHCPv4).
+// If either probe fails, returns the dual-stack default (same as historical tests).
+func NetworkDataMatchingClusterIPFamilies() (string, error) {
+	supportsIPv4, errV4 := cluster.SupportsIpv4()
+	supportsIPv6, errV6 := cluster.SupportsIpv6()
+	if errV4 != nil || errV6 != nil {
+		return CreateDefaultCloudInitNetworkData(), nil
+	}
+	if supportsIPv4 && supportsIPv6 {
+		return CreateDefaultCloudInitNetworkData(), nil
+	}
+	if supportsIPv4 && !supportsIPv6 {
+		return NewNetworkData(
+			WithEthernet("eth0",
+				WithDHCP4Enabled(),
+				WithDHCP6Disabled(),
+				WithNameserverFromCluster(),
+			))
+	}
+	return NewNetworkData(
+		WithEthernet("eth0",
+			WithDHCP4Disabled(),
+			WithAddresses(DefaultIPv6CIDR),
+			WithGateway6(DefaultIPv6Gateway),
+			WithNameserverFromCluster(),
+		))
 }
 
 func GetFedoraToolsGuestAgentBlacklistUserData(commands string) string {

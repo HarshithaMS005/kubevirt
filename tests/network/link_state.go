@@ -61,7 +61,7 @@ var _ = Describe(SIG("interface state up/down", func() {
 		Expect(err).NotTo(HaveOccurred())
 	})
 
-	It("status and guest should show correct iface state", func() {
+	It("[test_id:mmm] status and guest should show correct iface state", func() {
 		testNamespace := testsuite.GetTestNamespace(nil)
 		mac1, err := libnet.GenerateRandomMac()
 		Expect(err).NotTo(HaveOccurred())
@@ -145,7 +145,7 @@ var _ = Describe(SIG("interface state up/down", func() {
 		Expect(console.RunCommand(vmi, libnet.NewLinkStateAssersionCmd(mac2.String(), v1.InterfaceStateLinkUp), timeout)).To(Succeed())
 	})
 
-	It("status and guest should show iface is down when vm with ifaces down is migrated", func() {
+	It("[test_id:nnn]status and guest should show iface is down when vm with ifaces down is migrated", func() {
 		testNamespace := testsuite.GetTestNamespace(nil)
 		mac1, err := libnet.GenerateRandomMac()
 		Expect(err).NotTo(HaveOccurred())
