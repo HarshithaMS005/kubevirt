@@ -37,12 +37,21 @@ import (
 type server string
 
 const (
-	TCPServer  = server("\"Hello World!\"&\n")
+	TCPServer = server("'Hello World!'&\n")
+	// Double-quoted so shell passes one arg to printf without extra quote chars in output.
 	HTTPServer = server("\"HTTP/1.1 200 OK\\nContent-Length: 12\\n\\nHello World!\"&\n")
 )
 
 func (s server) composeNetcatServerCommand(port int, extraArgs ...string) string {
-	return fmt.Sprintf("nc %s -klp %d -e echo -e %s", strings.Join(extraArgs, " "), port, string(s))
+	return fmt.Sprintf("nc %s -klp %d -e printf %s", strings.Join(extraArgs, " "), port, string(s))
+}
+
+// composeHTTPServerCommand builds the nc command for the HTTP server. It uses sh -c with a short
+// sleep so the connection stays open long enough for wget to read the full response (avoids
+// "Connection reset by peer" when nc closes as soon as printf exits).
+func composeHTTPServerCommand(port int, extraArgs ...string) string {
+	payload := `printf "HTTP/1.1 200 OK\nContent-Length: 12\n\nHello World!"; sleep 2`
+	return fmt.Sprintf("nc %s -klp %d -e sh -c %q&", strings.Join(extraArgs, " "), port, payload)
 }
 
 func StartTCPServer(vmi *v1.VirtualMachineInstance, port int, loginTo console.LoginToFunction) {
@@ -88,5 +97,11 @@ EOL`, inetSuffix, port)
 }
 
 func (s server) Start(vmi *v1.VirtualMachineInstance, port int, extraArgs ...string) {
-	Expect(console.RunCommand(vmi, s.composeNetcatServerCommand(port, extraArgs...), 60*time.Second)).To(Succeed())
+	var cmd string
+	if s == HTTPServer {
+		cmd = composeHTTPServerCommand(port, extraArgs...)
+	} else {
+		cmd = s.composeNetcatServerCommand(port, extraArgs...)
+	}
+	Expect(console.RunCommand(vmi, cmd, 60*time.Second)).To(Succeed())
 }

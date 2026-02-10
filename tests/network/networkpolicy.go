@@ -23,14 +23,27 @@ import (
 	v1 "kubevirt.io/api/core/v1"
 	"kubevirt.io/client-go/kubecli"
 
+	libvmi "kubevirt.io/kubevirt/pkg/libvmi"
+	libvmici "kubevirt.io/kubevirt/pkg/libvmi/cloudinit"
+
 	"kubevirt.io/kubevirt/tests/console"
 	"kubevirt.io/kubevirt/tests/decorators"
+	"kubevirt.io/kubevirt/tests/flags"
 	"kubevirt.io/kubevirt/tests/libnet"
+	netcloudinit "kubevirt.io/kubevirt/tests/libnet/cloudinit"
+	"kubevirt.io/kubevirt/tests/libnet/cluster"
 	"kubevirt.io/kubevirt/tests/libnet/vmnetserver"
 	"kubevirt.io/kubevirt/tests/libvmifact"
 	"kubevirt.io/kubevirt/tests/libwait"
 	"kubevirt.io/kubevirt/tests/testsuite"
 )
+
+// Network policy connectivity (IPv4/IPv6):
+//   - Dual-stack is the primary e2e target: assert the primary path, then every reported IP when the cluster is
+//     dual-stack, the target VMI has both families, and flags.SkipDualStackTests is false (see clusterDualStackAndVMHasBothIPFamilies).
+//   - Single-stack (IPv4-only / IPv6-only) is second; guest cloud-init matches cluster families via
+//     netcloudinit.NetworkDataMatchingClusterIPFamilies (virt-handler PodIPs).
+//   - primaryIPForConnectivityCheck returns IPv4 primary if present, else IPv6; internal callers Expect the returned error.
 
 var _ = Describe(SIG("[rfe_id:150][crit:high][vendor:cnv-qe@redhat.com][level:component]Networkpolicy", func() {
 	var (
@@ -72,16 +85,16 @@ var _ = Describe(SIG("[rfe_id:150][crit:high][vendor:cnv-qe@redhat.com][level:co
 
 			It("[test_id:1511] should fail to reach serverVMI from clientVMI", func() {
 				By("Connect serverVMI from clientVMI")
-				assertPingFail(clientVMI, serverVMI)
+				assertPingFailToPrimaryIP(clientVMI, serverVMI)
 			})
 
 			It("[test_id:1512] should fail to reach clientVMI from serverVMI", func() {
 				By("Connect clientVMI from serverVMI")
-				assertPingFail(serverVMI, clientVMI)
+				assertPingFailToPrimaryIP(serverVMI, clientVMI)
 			})
 			It("[test_id:369] should deny http traffic for ports 80/81 from clientVMI to serverVMI", func() {
-				assertHTTPPingFailed(clientVMI, serverVMI, 80)
-				assertHTTPPingFailed(clientVMI, serverVMI, 81)
+				assertHTTPPingFailedToPrimaryIP(clientVMI, serverVMI, 80)
+				assertHTTPPingFailedToPrimaryIP(clientVMI, serverVMI, 81)
 			})
 		})
 
@@ -117,7 +130,7 @@ var _ = Describe(SIG("[rfe_id:150][crit:high][vendor:cnv-qe@redhat.com][level:co
 				})
 
 				It("[test_id:1513] should succeed pinging between two VMI/s in the same namespace", decorators.Conformance, func() {
-					assertPingSucceed(clientVMI, serverVMI)
+					assertPingSucceedToPrimaryIP(clientVMI, serverVMI)
 				})
 			})
 
@@ -132,7 +145,7 @@ var _ = Describe(SIG("[rfe_id:150][crit:high][vendor:cnv-qe@redhat.com][level:co
 				})
 
 				It("[test_id:1514] should fail pinging between two VMI/s each on different namespaces", decorators.Conformance, func() {
-					assertPingFail(clientVMIAlternativeNamespace, serverVMI)
+					assertPingFailToPrimaryIP(clientVMIAlternativeNamespace, serverVMI)
 				})
 			})
 		})
@@ -174,7 +187,7 @@ var _ = Describe(SIG("[rfe_id:150][crit:high][vendor:cnv-qe@redhat.com][level:co
 
 				It("[test_id:1515] should fail to reach serverVMI from clientVMIAlternativeNamespace", func() {
 					By("Connect serverVMI from clientVMIAlternativeNamespace")
-					assertPingFail(clientVMIAlternativeNamespace, serverVMI)
+					assertPingFailToPrimaryIP(clientVMIAlternativeNamespace, serverVMI)
 				})
 			})
 
@@ -188,7 +201,7 @@ var _ = Describe(SIG("[rfe_id:150][crit:high][vendor:cnv-qe@redhat.com][level:co
 
 				It("[test_id:1515] should fail to reach serverVMI from clientVMI", func() {
 					By("Connect serverVMI from clientVMIAlternativeNamespace")
-					assertPingFail(clientVMI, serverVMI)
+					assertPingFailToPrimaryIP(clientVMI, serverVMI)
 				})
 
 				When("another client vmi is on an alternative namespace", func() {
@@ -203,7 +216,7 @@ var _ = Describe(SIG("[rfe_id:150][crit:high][vendor:cnv-qe@redhat.com][level:co
 
 					It("[test_id:1517] should success to reach clientVMI from clientVMIAlternativeNamespace", func() {
 						By("Connect clientVMI from clientVMIAlternativeNamespace")
-						assertPingSucceed(clientVMIAlternativeNamespace, clientVMI)
+						assertPingSucceedToPrimaryIP(clientVMIAlternativeNamespace, clientVMI)
 					})
 				})
 			})
@@ -236,8 +249,8 @@ var _ = Describe(SIG("[rfe_id:150][crit:high][vendor:cnv-qe@redhat.com][level:co
 				waitForNetworkPolicyDeletion(policy)
 			})
 			It("[test_id:2774] should allow http traffic for ports 80 and 81 from clientVMI to serverVMI", func() {
-				assertHTTPPingSucceed(clientVMI, serverVMI, 80)
-				assertHTTPPingSucceed(clientVMI, serverVMI, 81)
+				assertHTTPPingSucceedToPrimaryIP(clientVMI, serverVMI, 80)
+				assertHTTPPingSucceedToPrimaryIP(clientVMI, serverVMI, 81)
 			})
 		})
 		Context("and TCP connectivity on ports 80 between VMI/s is allowed by networkpolicy", func() {
@@ -265,8 +278,8 @@ var _ = Describe(SIG("[rfe_id:150][crit:high][vendor:cnv-qe@redhat.com][level:co
 				waitForNetworkPolicyDeletion(policy)
 			})
 			It("[test_id:2775] should allow http traffic at port 80 and deny at port 81 from clientVMI to serverVMI", func() {
-				assertHTTPPingSucceed(clientVMI, serverVMI, 80)
-				assertHTTPPingFailed(clientVMI, serverVMI, 81)
+				assertHTTPPingSucceedToPrimaryIP(clientVMI, serverVMI, 80)
+				assertHTTPPingFailedToPrimaryIP(clientVMI, serverVMI, 81)
 			})
 		})
 	})
@@ -303,6 +316,55 @@ func assertPingFail(fromVmi, toVmi *v1.VirtualMachineInstance) {
 		}
 		return err
 	}, 5*time.Second, 1*time.Second).ShouldNot(Succeed())
+}
+
+// primaryIPForConnectivityCheck returns IPv4 primary if present, else IPv6 from VMI status (GetVmiPrimaryIPByFamily).
+// Cluster/guest IP-family alignment is enforced at VM creation via netcloudinit.NetworkDataMatchingClusterIPFamilies, not here.
+// Callers handle a non-nil error with Expect; do not pass an unready VMI.
+func primaryIPForConnectivityCheck(vmi *v1.VirtualMachineInstance) (string, error) {
+	if ip := libnet.GetVmiPrimaryIPByFamily(vmi, corev1.IPv4Protocol); ip != "" {
+		return ip, nil
+	}
+	if ip := libnet.GetVmiPrimaryIPByFamily(vmi, corev1.IPv6Protocol); ip != "" {
+		return ip, nil
+	}
+	return "", fmt.Errorf("no IPv4/IPv6 primary address in status for VMI %s/%s", vmi.Namespace, vmi.Name)
+}
+
+// clusterDualStackAndVMHasBothIPFamilies is true when the cluster is dual-stack and the VMI reports IPv4 and IPv6 primaries
+// and dual-stack follow-up tests are not skipped.
+func clusterDualStackAndVMHasBothIPFamilies(vmi *v1.VirtualMachineInstance) bool {
+	if flags.SkipDualStackTests {
+		return false
+	}
+	ds, err := cluster.DualStack()
+	if err != nil || !ds {
+		return false
+	}
+	v4 := libnet.GetVmiPrimaryIPByFamily(vmi, corev1.IPv4Protocol)
+	v6 := libnet.GetVmiPrimaryIPByFamily(vmi, corev1.IPv6Protocol)
+	return v4 != "" && v6 != ""
+}
+
+// assertPingFailToPrimaryIP: ping fails to primaryIPForConnectivityCheck(toVmi); on dual-stack with both families on toVmi, also assertPingFail (all status IPs).
+func assertPingFailToPrimaryIP(fromVmi, toVmi *v1.VirtualMachineInstance) {
+	toIP, err := primaryIPForConnectivityCheck(toVmi)
+	ExpectWithOffset(1, err).ToNot(HaveOccurred())
+	EventuallyWithOffset(1, func() error { return libnet.PingFromVMConsole(fromVmi, toIP) }, 10*time.Second, time.Second).Should(HaveOccurred())
+	ConsistentlyWithOffset(1, func() error { return libnet.PingFromVMConsole(fromVmi, toIP) }, 10*time.Second, time.Second).Should(HaveOccurred())
+	if clusterDualStackAndVMHasBothIPFamilies(toVmi) {
+		assertPingFail(fromVmi, toVmi)
+	}
+}
+
+// assertPingSucceedToPrimaryIP: ping succeeds to primaryIPForConnectivityCheck(toVmi); dual-stack + both families on toVmi → also assertPingSucceed (all status IPs).
+func assertPingSucceedToPrimaryIP(fromVmi, toVmi *v1.VirtualMachineInstance) {
+	toIP, err := primaryIPForConnectivityCheck(toVmi)
+	ExpectWithOffset(1, err).ToNot(HaveOccurred())
+	ExpectWithOffset(1, libnet.PingFromVMConsole(fromVmi, toIP)).To(Succeed())
+	if clusterDualStackAndVMHasBothIPFamilies(toVmi) {
+		assertPingSucceed(fromVmi, toVmi)
+	}
 }
 
 func createNetworkPolicy(namespace, name string, labelSelector metav1.LabelSelector, ingress []networkv1.NetworkPolicyIngressRule) *networkv1.NetworkPolicy {
@@ -349,6 +411,29 @@ func assertHTTPPingFailed(vmiFrom, vmiTo *v1.VirtualMachineInstance, port int) {
 	ConsistentlyWithOffset(1, checkHTTPPingAndStopOnSucceed(vmiFrom, vmiTo, port), 10*time.Second, time.Second).ShouldNot(Succeed())
 }
 
+// assertHTTPPingSucceedToPrimaryIP: HTTP OK to primaryIPForConnectivityCheck(toVmi); dual-stack + both families → assertHTTPPingSucceed (all status IPs).
+func assertHTTPPingSucceedToPrimaryIP(fromVmi, toVmi *v1.VirtualMachineInstance, port int) {
+	toIP, err := primaryIPForConnectivityCheck(toVmi)
+	ExpectWithOffset(1, err).ToNot(HaveOccurred())
+	ConsistentlyWithOffset(1, func() error {
+		return checkHTTPPing(fromVmi, toIP, port)
+	}, 10*time.Second, time.Second).Should(Succeed())
+	if clusterDualStackAndVMHasBothIPFamilies(toVmi) {
+		assertHTTPPingSucceed(fromVmi, toVmi, port)
+	}
+}
+
+// assertHTTPPingFailedToPrimaryIP: HTTP fails to primaryIPForConnectivityCheck(toVmi); dual-stack + both families → assertHTTPPingFailed (all status IPs).
+func assertHTTPPingFailedToPrimaryIP(fromVmi, toVmi *v1.VirtualMachineInstance, port int) {
+	toIP, err := primaryIPForConnectivityCheck(toVmi)
+	ExpectWithOffset(1, err).ToNot(HaveOccurred())
+	EventuallyWithOffset(1, func() error { return checkHTTPPing(fromVmi, toIP, port) }, 10*time.Second, time.Second).Should(HaveOccurred())
+	ConsistentlyWithOffset(1, func() error { return checkHTTPPing(fromVmi, toIP, port) }, 10*time.Second, time.Second).Should(HaveOccurred())
+	if clusterDualStackAndVMHasBothIPFamilies(toVmi) {
+		assertHTTPPingFailed(fromVmi, toVmi, port)
+	}
+}
+
 func checkHTTPPingAndStopOnSucceed(fromVmi, toVmi *v1.VirtualMachineInstance, port int) func() error {
 	return func() error {
 		var err error
@@ -389,20 +474,45 @@ func assertIPsNotEmptyForVMI(vmi *v1.VirtualMachineInstance) {
 	ExpectWithOffset(1, vmi.Status.Interfaces[0].IPs).ToNot(BeEmpty(), "should contain a not empty list of ip addresses")
 }
 
+// // loginToAlpineWithTimeout returns a LoginToFunction that uses the given timeout (e.g. for s390x where Alpine can boot slower).
+// func loginToAlpineWithTimeout(timeout time.Duration) console.LoginToFunction {
+// 	return func(vmi *v1.VirtualMachineInstance, _ ...time.Duration) error {
+// 		return console.LoginToAlpine(vmi, timeout)
+// 	}
+// }
+
 func createClientVmi(namespace string, virtClient kubecli.KubevirtClient) (*v1.VirtualMachineInstance, error) {
-	clientVMI := libvmifact.NewAlpineWithTestTooling(libnet.WithMasqueradeNetworking())
-	var err error
+	networkData, err := netcloudinit.NetworkDataMatchingClusterIPFamilies()
+	if err != nil {
+		return nil, err
+	}
+	clientVMI := libvmifact.NewAlpineWithTestTooling(
+		libvmi.WithCloudInitNoCloud(
+			libvmifact.WithDummyCloudForFastBoot(),
+			libvmici.WithNoCloudNetworkData(networkData),
+		),
+		libnet.WithMasqueradeNetworking(),
+	)
 	clientVMI, err = virtClient.VirtualMachineInstance(namespace).Create(context.Background(), clientVMI, metav1.CreateOptions{})
 	if err != nil {
 		return nil, err
 	}
 
+	//clientVMI = libwait.WaitUntilVMIReady(clientVMI, loginToAlpineWithTimeout(300*time.Second))
 	clientVMI = libwait.WaitUntilVMIReady(clientVMI, console.LoginToAlpine)
 	return clientVMI, nil
 }
 
 func createServerVmi(virtClient kubecli.KubevirtClient, namespace string, serverVMILabels map[string]string) (*v1.VirtualMachineInstance, error) {
+	networkData, err := netcloudinit.NetworkDataMatchingClusterIPFamilies()
+	if err != nil {
+		return nil, err
+	}
 	serverVMI := libvmifact.NewAlpineWithTestTooling(
+		libvmi.WithCloudInitNoCloud(
+			libvmifact.WithDummyCloudForFastBoot(),
+			libvmici.WithNoCloudNetworkData(networkData),
+		),
 		libnet.WithMasqueradeNetworking(
 			v1.Port{
 				Name:     "http80",
@@ -417,10 +527,11 @@ func createServerVmi(virtClient kubecli.KubevirtClient, namespace string, server
 		),
 	)
 	serverVMI.Labels = serverVMILabels
-	serverVMI, err := virtClient.VirtualMachineInstance(namespace).Create(context.Background(), serverVMI, metav1.CreateOptions{})
+	serverVMI, err = virtClient.VirtualMachineInstance(namespace).Create(context.Background(), serverVMI, metav1.CreateOptions{})
 	if err != nil {
 		return nil, err
 	}
+	//serverVMI = libwait.WaitUntilVMIReady(serverVMI, loginToAlpineWithTimeout(300*time.Second))
 	serverVMI = libwait.WaitUntilVMIReady(serverVMI, console.LoginToAlpine)
 
 	By("Start HTTP server at serverVMI on ports 80 and 81")

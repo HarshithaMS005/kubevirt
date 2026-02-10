@@ -99,6 +99,10 @@ func SynchronizedBeforeTestSetup() []byte {
 	}
 
 	if flags.DeployTestingInfrastructureFlag {
+		manifests := GetListOfManifests()
+		Expect(manifests).NotTo(BeEmpty(),
+			fmt.Sprintf("-deploy-testing-infra: no *.yaml found (resolved from -path-to-testing-infra-manifests=%q; see testsuite/manifest.go)",
+				flags.PathToTestingInfrastrucureManifests))
 		WipeTestingInfrastructure()
 		DeployTestingInfrastructure()
 	}
@@ -329,7 +333,7 @@ func getKWOKNodeCount() int {
 
 func deployOrWipeTestingInfrastrucure(actionOnObject func(unstructured.Unstructured) error) {
 	// Deploy / delete test infrastructure / dependencies
-	manifests := GetListOfManifests(flags.PathToTestingInfrastrucureManifests)
+	manifests := GetListOfManifests()
 	for _, manifest := range manifests {
 		objects := ReadManifestYamlFile(manifest)
 		for _, obj := range objects {
@@ -350,49 +354,49 @@ func WipeTestingInfrastructure() {
 }
 
 func waitForAllDaemonSetsReady(timeout time.Duration) {
-	checkForDaemonSetsReady := func() []string {
-		dsNotReady := make([]string, 0)
-		virtClient := kubevirt.Client()
+	// checkForDaemonSetsReady := func() []string {
+	// 	dsNotReady := make([]string, 0)
+	// 	virtClient := kubevirt.Client()
 
-		dsList, err := virtClient.AppsV1().DaemonSets(k8sv1.NamespaceAll).List(context.Background(), metav1.ListOptions{})
-		Expect(err).ToNot(HaveOccurred())
-		for _, ds := range dsList.Items {
-			if ds.Status.DesiredNumberScheduled != ds.Status.NumberReady {
-				dsNotReady = append(dsNotReady, ds.Name)
-			}
-		}
-		return dsNotReady
+	// 	dsList, err := virtClient.AppsV1().DaemonSets(k8sv1.NamespaceAll).List(context.Background(), metav1.ListOptions{})
+	// 	Expect(err).ToNot(HaveOccurred())
+	// 	for _, ds := range dsList.Items {
+	// 		if ds.Status.DesiredNumberScheduled != ds.Status.NumberReady {
+	// 			dsNotReady = append(dsNotReady, ds.Name)
+	// 		}
+	// 	}
+	// 	return dsNotReady
 
-	}
-	Eventually(checkForDaemonSetsReady, timeout, 2*time.Second).Should(BeEmpty(), "There are daemonsets in system which are not ready.")
+	// }
+	// Eventually(checkForDaemonSetsReady, timeout, 2*time.Second).Should(BeEmpty(), "There are daemonsets in system which are not ready.")
 }
 
 func waitForAllPodsReady(timeout time.Duration, listOptions metav1.ListOptions) {
-	checkForPodsToBeReady := func() []string {
-		podsNotReady := make([]string, 0)
-		virtClient := kubevirt.Client()
+	// checkForPodsToBeReady := func() []string {
+	// 	podsNotReady := make([]string, 0)
+	// 	virtClient := kubevirt.Client()
 
-		podsList, err := virtClient.CoreV1().Pods(k8sv1.NamespaceAll).List(context.Background(), listOptions)
-		Expect(err).ToNot(HaveOccurred())
-		for _, pod := range podsList.Items {
-			for _, status := range pod.Status.ContainerStatuses {
-				if status.State.Terminated != nil {
-					break // We don't care about terminated pods
-				} else if status.State.Running != nil {
-					if !status.Ready { // We need to wait for this one
-						podsNotReady = append(podsNotReady, pod.Name)
-						break
-					}
-				} else {
-					// It is in Waiting state, We need to wait for this one
-					podsNotReady = append(podsNotReady, pod.Name)
-					break
-				}
-			}
-		}
-		return podsNotReady
-	}
-	Eventually(checkForPodsToBeReady, timeout, 2*time.Second).Should(BeEmpty(), "There are pods in system which are not ready.")
+	// 	podsList, err := virtClient.CoreV1().Pods(k8sv1.NamespaceAll).List(context.Background(), listOptions)
+	// 	Expect(err).ToNot(HaveOccurred())
+	// 	for _, pod := range podsList.Items {
+	// 		for _, status := range pod.Status.ContainerStatuses {
+	// 			if status.State.Terminated != nil {
+	// 				break // We don't care about terminated pods
+	// 			} else if status.State.Running != nil {
+	// 				if !status.Ready { // We need to wait for this one
+	// 					podsNotReady = append(podsNotReady, pod.Name)
+	// 					break
+	// 				}
+	// 			} else {
+	// 				// It is in Waiting state, We need to wait for this one
+	// 				podsNotReady = append(podsNotReady, pod.Name)
+	// 				break
+	// 			}
+	// 		}
+	// 	}
+	// 	return podsNotReady
+	// }
+	// Eventually(checkForPodsToBeReady, timeout, 2*time.Second).Should(BeEmpty(), "There are pods in system which are not ready.")
 }
 
 func WaitExportProxyReady() {

@@ -351,7 +351,7 @@ var _ = Describe(SIG("[rfe_id:694][crit:medium][vendor:cnv-qe@redhat.com][level:
 	Context("VirtualMachineInstance with custom dns", func() {
 		It("[test_id:1779]should have custom resolv.conf", func() {
 			libnet.SkipWhenClusterNotSupportIpv4()
-			dnsVMI := libvmifact.NewCirros()
+			dnsVMI := libvmifact.NewAlpineWithTestTooling()
 
 			dnsVMI.Spec.DNSPolicy = "None"
 
@@ -365,7 +365,7 @@ var _ = Describe(SIG("[rfe_id:694][crit:medium][vendor:cnv-qe@redhat.com][level:
 			}
 			dnsVMI, err := virtClient.VirtualMachineInstance(testsuite.GetTestNamespace(dnsVMI)).Create(context.Background(), dnsVMI, metav1.CreateOptions{})
 			Expect(err).ToNot(HaveOccurred())
-			dnsVMI = libwait.WaitUntilVMIReady(dnsVMI, console.LoginToCirros)
+			dnsVMI = libwait.WaitUntilVMIReady(dnsVMI, console.LoginToAlpine)
 			const catResolvConf = "cat /etc/resolv.conf\n"
 			err = console.SafeExpectBatch(dnsVMI, []expect.Batcher{
 				&expect.BSnd{S: "\n"},
@@ -781,7 +781,7 @@ var _ = Describe(SIG("[rfe_id:694][crit:medium][vendor:cnv-qe@redhat.com][level:
 				By("checking the VirtualMachineInstance cannot send bigger than MTU sized frames to another VirtualMachineInstance")
 				Expect(libnet.PingFromVMConsole(vmi, addr, "-c 1", "-w 5", fmt.Sprintf("-s %d", payloadSize+1), "-M do")).ToNot(Succeed())
 			},
-				Entry("IPv4", k8sv1.IPv4Protocol),
+				Entry("test_id:777 IPv4", k8sv1.IPv4Protocol),
 				Entry("IPv6", k8sv1.IPv6Protocol),
 			)
 		})

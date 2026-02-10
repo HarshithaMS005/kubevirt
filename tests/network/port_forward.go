@@ -72,8 +72,8 @@ var _ = Describe(SIG("Port-forward", func() {
 				Skip(skipIPv6Message)
 			}
 
-			vmi := createCirrosVMIWithPortsAndBlockUntilReady(virtClient, vmiDeclaredPorts)
-			vmnetserver.StartHTTPServerWithSourceIP(vmi, vmiHttpServerPort, getMasqueradeInternalAddress(ipFamily), console.LoginToCirros)
+			vmi := createAlpineVMIWithPortsAndBlockUntilReady(virtClient, vmiDeclaredPorts)
+			vmnetserver.StartHTTPServerWithSourceIP(vmi, vmiHttpServerPort, getMasqueradeInternalAddress(ipFamily), console.LoginToAlpine)
 
 			localPort = 1500 + GinkgoParallelProcess()
 			vmiPod, err := libpod.GetPodByVirtualMachineInstance(vmi, vmi.Namespace)
@@ -103,7 +103,7 @@ var _ = Describe(SIG("Port-forward", func() {
 				By(fmt.Sprintf("checking that service running on port %d can be reached", declaredPort))
 				Expect(testConnectivityThroughLocalPort(ipFamily, localPort)).To(Succeed())
 			},
-				Entry("IPv4", k8sv1.IPv4Protocol),
+				Entry("test_id:hhhh IPv4", k8sv1.IPv4Protocol),
 				Entry("IPv6", k8sv1.IPv6Protocol),
 			)
 		})
@@ -120,7 +120,7 @@ var _ = Describe(SIG("Port-forward", func() {
 				By(fmt.Sprintf("checking that service running on port %d can be reached", nonDeclaredPort))
 				Expect(testConnectivityThroughLocalPort(ipFamily, localPort)).To(Succeed())
 			},
-				Entry("IPv4", k8sv1.IPv4Protocol),
+				Entry("test_id:gggg IPv4", k8sv1.IPv4Protocol),
 				Entry("IPv6", k8sv1.IPv6Protocol),
 			)
 		})
@@ -138,7 +138,7 @@ var _ = Describe(SIG("Port-forward", func() {
 				By(fmt.Sprintf("checking that service running on port %d can not be reached", nonDeclaredPort))
 				Expect(testConnectivityThroughLocalPort(ipFamily, localPort)).ToNot(Succeed())
 			},
-				Entry("IPv4", k8sv1.IPv4Protocol),
+				Entry("test_id:kkkk IPv4", k8sv1.IPv4Protocol),
 				Entry("IPv6", k8sv1.IPv6Protocol),
 			)
 		})
@@ -163,15 +163,15 @@ func killPortForwardCommand(portForwardCmd *exec.Cmd) error {
 	return err
 }
 
-func createCirrosVMIWithPortsAndBlockUntilReady(virtClient kubecli.KubevirtClient, ports []v1.Port) *v1.VirtualMachineInstance {
-	vmi := libvmifact.NewCirros(
+func createAlpineVMIWithPortsAndBlockUntilReady(virtClient kubecli.KubevirtClient, ports []v1.Port) *v1.VirtualMachineInstance {
+	vmi := libvmifact.NewAlpineWithTestTooling(
 		libvmi.WithNetwork(v1.DefaultPodNetwork()),
 		libvmi.WithInterface(libvmi.InterfaceDeviceWithMasqueradeBinding(ports...)),
 	)
 
 	vmi, err := virtClient.VirtualMachineInstance(testsuite.NamespaceTestDefault).Create(context.Background(), vmi, metav1.CreateOptions{})
 	Expect(err).ToNot(HaveOccurred())
-	vmi = libwait.WaitUntilVMIReady(vmi, console.LoginToCirros)
+	vmi = libwait.WaitUntilVMIReady(vmi, console.LoginToAlpine)
 
 	return vmi
 }
