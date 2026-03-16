@@ -45,7 +45,55 @@ import (
 	putil "kubevirt.io/kubevirt/pkg/util"
 )
 
+// tryBinaryRelative returns _out/manifests/testing relative to the test binary's directory, or "" if not present.
+func tryBinaryRelative() string {
+	exe, err := os.Executable()
+	if err != nil {
+		return ""
+	}
+	candidate := filepath.Join(filepath.Dir(exe), "..", "_out", "manifests", "testing")
+	if info, err := os.Stat(candidate); err == nil && info.IsDir() {
+		return candidate
+	}
+	return ""
+}
+
+// tryCwdRelative returns _out/manifests/testing relative to the current working directory, or "" if not present.
+func tryCwdRelative() string {
+	cwd, err := os.Getwd()
+	if err != nil {
+		return ""
+	}
+	candidate := filepath.Join(cwd, "_out", "manifests", "testing")
+	if info, err := os.Stat(candidate); err == nil && info.IsDir() {
+		return candidate
+	}
+	return ""
+}
+
+// resolveManifestsDir returns a valid manifests dir, or "" if none found.
+// Uses the given path if it exists; otherwise tries binary-relative then cwd-relative _out/manifests/testing.
+func resolveManifestsDir(pathToManifestsDir string) string {
+	if pathToManifestsDir != "" {
+		if info, err := os.Stat(pathToManifestsDir); err == nil && info.IsDir() {
+			return pathToManifestsDir
+		}
+	}
+	if p := tryBinaryRelative(); p != "" {
+		return p
+	}
+	if p := tryCwdRelative(); p != "" {
+		return p
+	}
+	fmt.Printf("WARNING: no valid testing manifests directory found. Skipping testing infra deployment.\n")
+	return ""
+}
+
 func GetListOfManifests(pathToManifestsDir string) []string {
+	pathToManifestsDir = resolveManifestsDir(pathToManifestsDir)
+	if pathToManifestsDir == "" {
+		return nil
+	}
 	var manifests []string
 	matchFileName := func(pattern, filename string) bool {
 		match, err := filepath.Match(pattern, filename)
