@@ -47,7 +47,7 @@ import (
 	"kubevirt.io/kubevirt/tests/flags"
 )
 
-// tryBinaryRelative returns _out/manifests/testing relative to the test binary’s directory, or "" if not present.
+// tryBinaryRelative returns _out/manifests/testing relative to the test binary's directory, or "" if not present.
 func tryBinaryRelative() string {
 	exe, err := os.Executable()
 	if err != nil {
@@ -74,9 +74,12 @@ func tryCwdRelative() string {
 }
 
 // resolveManifestsDir returns a valid manifests dir, or "" if none found.
+// Uses the given path if it exists; otherwise tries binary-relative then cwd-relative _out/manifests/testing.
 func resolveManifestsDir(pathToManifestsDir string) string {
-	if info, err := os.Stat(pathToManifestsDir); err == nil && info.IsDir() {
-		return pathToManifestsDir
+	if pathToManifestsDir != "" {
+		if info, err := os.Stat(pathToManifestsDir); err == nil && info.IsDir() {
+			return pathToManifestsDir
+		}
 	}
 	if p := tryBinaryRelative(); p != "" {
 		return p
