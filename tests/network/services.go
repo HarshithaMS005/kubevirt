@@ -96,14 +96,14 @@ var _ = Describe(SIG("Services", func() {
 			})
 
 			It("[test_id:1547] should be able to reach the vmi based on labels specified on the vmi", func() {
-				tcpJob, err := createServiceConnectivityJob(serviceName, inboundVMI.Namespace, servicePort, jobSuccessRetry)
+				tcpJob, err := createServiceConnectivityJob(serviceName, inboundVMI.Namespace, servicePort, jobSuccessRetry, k8sv1.IPv4Protocol)
 				Expect(err).NotTo(HaveOccurred())
 
 				Expect(job.WaitForJobToSucceed(tcpJob, 90*time.Second)).To(Succeed(), expectConnectivityToExposedService)
 			})
 
 			It("[test_id:1548] should fail to reach the vmi if an invalid servicename is used", decorators.WgS390x, func() {
-				tcpJob, err := createServiceConnectivityJob("wrongservice", inboundVMI.Namespace, servicePort, jobFailureRetry)
+				tcpJob, err := createServiceConnectivityJob("wrongservice", inboundVMI.Namespace, servicePort, jobFailureRetry, k8sv1.IPv4Protocol)
 				Expect(err).NotTo(HaveOccurred())
 
 				err = job.WaitForJobToFail(tcpJob, 90*time.Second)
@@ -125,7 +125,7 @@ var _ = Describe(SIG("Services", func() {
 				var err error
 				serviceHostnameWithSubdomain := fmt.Sprintf("%s.%s", inboundVMI.Spec.Hostname, inboundVMI.Spec.Subdomain)
 
-				tcpJob, err := createServiceConnectivityJob(serviceHostnameWithSubdomain, inboundVMI.Namespace, servicePort, jobSuccessRetry)
+				tcpJob, err := createServiceConnectivityJob(serviceHostnameWithSubdomain, inboundVMI.Namespace, servicePort, jobSuccessRetry, k8sv1.IPv4Protocol)
 				Expect(err).NotTo(HaveOccurred())
 
 				Expect(job.WaitForJobToSucceed(tcpJob, 90*time.Second)).To(Succeed(), expectConnectivityToExposedService)
@@ -154,7 +154,6 @@ var _ = Describe(SIG("Services", func() {
 			Expect(err).ToNot(HaveOccurred())
 
 			inboundVMI = libwait.WaitUntilVMIReady(inboundVMI, console.LoginToFedora)
-			vmnetserver.StartTCPServer(inboundVMI, servicePort, console.LoginToFedora)
 		})
 
 		Context("with a service matching the vmi exposed", func() {
@@ -163,6 +162,8 @@ var _ = Describe(SIG("Services", func() {
 				serviceName := "myservice"
 
 				libnet.SkipWhenClusterNotSupportIPFamily(ipFamily)
+
+				vmnetserver.StartTCPServerWithIPFamily(inboundVMI, servicePort, ipFamily, console.LoginToFedora)
 
 				By("setting up resources to expose the VMI via a service")
 				if ipFamily == k8sv1.IPv6Protocol {
@@ -178,7 +179,7 @@ var _ = Describe(SIG("Services", func() {
 				Expect(err).NotTo(HaveOccurred(), "the k8sv1.Service entity should have been created.")
 
 				By("checking connectivity the exposed service")
-				tcpJob, err := createServiceConnectivityJob(serviceName, inboundVMI.Namespace, servicePort, jobSuccessRetry)
+				tcpJob, err := createServiceConnectivityJob(serviceName, inboundVMI.Namespace, servicePort, jobSuccessRetry, ipFamily)
 				Expect(err).NotTo(HaveOccurred())
 
 				Expect(job.WaitForJobToSucceed(tcpJob, 90*time.Second)).To(Succeed(), expectConnectivityToExposedService)
@@ -190,7 +191,7 @@ var _ = Describe(SIG("Services", func() {
 
 		Context("*without* a service matching the vmi exposed", func() {
 			It("should fail to reach the vmi", func() {
-				tcpJob, err := createServiceConnectivityJob("missingservice", inboundVMI.Namespace, servicePort, jobFailureRetry)
+				tcpJob, err := createServiceConnectivityJob("missingservice", inboundVMI.Namespace, servicePort, jobFailureRetry, k8sv1.IPv4Protocol)
 				Expect(err).NotTo(HaveOccurred())
 
 				err = job.WaitForJobToFail(tcpJob, 90*time.Second)
@@ -200,11 +201,11 @@ var _ = Describe(SIG("Services", func() {
 	})
 }))
 
-func createServiceConnectivityJob(serviceName, namespace string, servicePort int, retries int32) (*batchv1.Job, error) {
+func createServiceConnectivityJob(serviceName, namespace string, servicePort int, retries int32, ipFamily k8sv1.IPFamily) (*batchv1.Job, error) {
 	serviceFQDN := fmt.Sprintf("%s.%s", serviceName, namespace)
 
 	By(fmt.Sprintf("starting a job which tries to reach the vmi via service %s, on port %d", serviceFQDN, servicePort))
-	tcpJob := job.NewHelloWorldJobTCP(serviceFQDN, strconv.Itoa(servicePort))
+	tcpJob := job.NewHelloWorldJobTCPWithIPFamily(serviceFQDN, strconv.Itoa(servicePort), ipFamily)
 	tcpJob.Spec.BackoffLimit = &retries
 	return kubevirt.Client().BatchV1().Jobs(namespace).Create(context.Background(), tcpJob, k8smetav1.CreateOptions{})
 }
