@@ -38,24 +38,29 @@ import (
 type server string
 
 const (
-	TCPServer = server("'Hello World!'")
-	// Script run under sh -c for HTTP over netcat (sleep keeps the connection open for clients).
-	HTTPServer = server(`printf "HTTP/1.1 200 OK\nContent-Length: 12\n\nHello World!"; sleep 2`)
+	TCPServer  = server("tcp-hello")
+	HTTPServer = server("http-hello")
+)
+
+// Shell payloads for `sh -c` under netcat -e; sleep keeps the response visible for a single client read.
+const (
+	tcpHelloShellPayload  = `printf 'Hello World!'; sleep 2`
+	httpHelloShellPayload = "printf \"HTTP/1.1 200 OK\nContent-Length: 12\n\nHello World!\"; sleep 2"
 )
 
 func (s server) composeServerCommand(port int, extraArgs ...string) string {
 	ncBase := fmt.Sprintf("nc %s -klp %d", strings.Join(extraArgs, " "), port)
+	var payload string
 	switch s {
 	case HTTPServer:
-		return fmt.Sprintf("%s -e sh -c %q&", ncBase, string(s))
+		payload = httpHelloShellPayload
 	case TCPServer:
-		// Keep the handler alive so the client Job can read "Hello World!" (BusyBox nc closes quickly).
-		payload := `printf 'Hello World!'; sleep 2`
-		return fmt.Sprintf("%s -e sh -c %q&\n", ncBase, payload)
+		payload = tcpHelloShellPayload
 	default:
 		Fail(fmt.Sprintf("unknown server type: %q", s))
 		return ""
 	}
+	return fmt.Sprintf("%s -e sh -c %q&\n", ncBase, payload)
 }
 
 func StartTCPServer(vmi *v1.VirtualMachineInstance, port int, loginTo console.LoginToFunction) {
