@@ -98,7 +98,7 @@ var _ = Describe(
 				passtIface.Ports = []v1.Port{{Port: 1234, Protocol: "TCP"}}
 				passtIface.MacAddress = testMACAddr
 				passtIface.PciAddress = testPCIAddr
-				vmi := libvmifact.NewAlpineWithTestTooling(
+				vmi := libvmifact.NewFedora(
 					libvmi.WithInterface(passtIface),
 					libvmi.WithNetwork(v1.DefaultPodNetwork()),
 				)
@@ -107,7 +107,7 @@ var _ = Describe(
 				vmi, err = kubevirt.Client().VirtualMachineInstance(namespace).Create(
 					context.Background(), vmi, metav1.CreateOptions{})
 				Expect(err).ToNot(HaveOccurred())
-				waitUntilVMIsReady(console.LoginToAlpine, vmi)
+				waitUntilVMIsReady(console.LoginToFedora, vmi)
 
 				Expect(vmi.Status.Interfaces).To(HaveLen(1))
 				Expect(vmi.Status.Interfaces[0].IPs).NotTo(BeEmpty())
@@ -128,7 +128,7 @@ var _ = Describe(
 				BeforeAll(func() {
 					namespace := testsuite.GetTestNamespace(nil)
 
-					clientVMI = libvmifact.NewAlpineWithTestTooling(
+					clientVMI = libvmifact.NewFedora(
 						libvmi.WithPasstInterfaceWithPort(),
 						libvmi.WithNetwork(v1.DefaultPodNetwork()),
 					)
@@ -136,7 +136,7 @@ var _ = Describe(
 						context.Background(), clientVMI, metav1.CreateOptions{})
 					Expect(err).ToNot(HaveOccurred())
 
-					serverVMI = libvmifact.NewAlpineWithTestTooling(
+					serverVMI = libvmifact.NewFedora(
 						libvmi.WithInterface(libvmi.InterfaceWithPasstBindingPlugin()),
 						libvmi.WithNetwork(v1.DefaultPodNetwork()),
 					)
@@ -144,9 +144,9 @@ var _ = Describe(
 						context.Background(), serverVMI, metav1.CreateOptions{})
 					Expect(err).ToNot(HaveOccurred())
 
-					waitUntilVMIsReady(console.LoginToAlpine, clientVMI, serverVMI)
+					waitUntilVMIsReady(console.LoginToFedora, clientVMI, serverVMI)
 
-					vmnetserver.StartTCPServer(serverVMI, highTCPPort, console.LoginToAlpine)
+					vmnetserver.StartTCPServer(serverVMI, highTCPPort, console.LoginToFedora)
 				})
 				DescribeTable("connectivity", func(ipFamily k8sv1.IPFamily) {
 					libnet.SkipWhenClusterNotSupportIPFamily(ipFamily)
@@ -203,7 +203,7 @@ var _ = Describe(
 					}
 
 					By("Starting server VMI")
-					serverVMI = libvmifact.NewAlpineWithTestTooling(
+					serverVMI = libvmifact.NewFedora(
 						libvmi.WithInterface(libvmi.InterfaceWithPasstBindingPlugin(ports...)),
 						libvmi.WithNetwork(v1.DefaultPodNetwork()),
 					)
@@ -212,7 +212,7 @@ var _ = Describe(
 					Expect(err).ToNot(HaveOccurred())
 
 					By("Starting client VMI")
-					clientVMI = libvmifact.NewAlpineWithTestTooling(
+					clientVMI = libvmifact.NewFedora(
 						libvmi.WithInterface(libvmi.InterfaceWithPasstBindingPlugin()),
 						libvmi.WithNetwork(v1.DefaultPodNetwork()),
 					)
@@ -220,7 +220,7 @@ var _ = Describe(
 						context.Background(), clientVMI, metav1.CreateOptions{})
 					Expect(err).ToNot(HaveOccurred())
 
-					waitUntilVMIsReady(console.LoginToAlpine, serverVMI, clientVMI)
+					waitUntilVMIsReady(console.LoginToFedora, serverVMI, clientVMI)
 				})
 
 				DescribeTable("connectivity", func(udpPort int, ipFamily k8sv1.IPFamily) {
@@ -248,7 +248,7 @@ var _ = Describe(
 				var vmi *v1.VirtualMachineInstance
 
 				BeforeAll(func() {
-					vmi = libvmifact.NewAlpineWithTestTooling(
+					vmi = libvmifact.NewFedora(
 						libvmi.WithPasstInterfaceWithPort(),
 						libvmi.WithNetwork(v1.DefaultPodNetwork()),
 					)
@@ -257,7 +257,7 @@ var _ = Describe(
 						context.Background(), vmi, metav1.CreateOptions{})
 					Expect(err).ToNot(HaveOccurred())
 
-					waitUntilVMIsReady(console.LoginToAlpine, vmi)
+					waitUntilVMIsReady(console.LoginToFedora, vmi)
 				})
 
 				It("should be able to reach the outside world [IPv4]", Label("RequiresOutsideConnectivity"), func() {
@@ -387,7 +387,7 @@ func startPasstVMI() *v1.VirtualMachineInstance {
 func createClientServerPasstVMIsWithTCPServer(tcpPort int) (client, server *v1.VirtualMachineInstance, err error) {
 	namespace := testsuite.GetTestNamespace(nil)
 
-	clientVMI := libvmifact.NewAlpineWithTestTooling(
+	clientVMI := libvmifact.NewFedora(
 		libvmi.WithPasstInterfaceWithPort(),
 		libvmi.WithNetwork(v1.DefaultPodNetwork()),
 	)
@@ -398,7 +398,7 @@ func createClientServerPasstVMIsWithTCPServer(tcpPort int) (client, server *v1.V
 	}
 
 	ports := []v1.Port{{Name: "http", Port: int32(tcpPort), Protocol: "TCP"}} //nolint:gosec // tcpPort is a test constant
-	serverVMI := libvmifact.NewAlpineWithTestTooling(
+	serverVMI := libvmifact.NewFedora(
 		libvmi.WithInterface(libvmi.InterfaceWithPasstBindingPlugin(ports...)),
 		libvmi.WithNetwork(v1.DefaultPodNetwork()),
 	)
@@ -408,11 +408,11 @@ func createClientServerPasstVMIsWithTCPServer(tcpPort int) (client, server *v1.V
 		return nil, nil, err
 	}
 
-	waitUntilVMIsReady(console.LoginToAlpine, clientVMI, serverVMI)
+	waitUntilVMIsReady(console.LoginToFedora, clientVMI, serverVMI)
 
-	vmnetserver.StartTCPServer(serverVMI, tcpPort, console.LoginToAlpine)
+	vmnetserver.StartTCPServer(serverVMI, tcpPort, console.LoginToFedora)
 	By("starting a TCP server on a port not specified on the VM spec")
-	vmnetserver.StartTCPServer(serverVMI, tcpPort+1, console.LoginToAlpine)
+	vmnetserver.StartTCPServer(serverVMI, tcpPort+1, console.LoginToFedora)
 
 	return clientVMI, serverVMI, nil
 }
